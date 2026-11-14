@@ -1,0 +1,791 @@
+<html>
+<head>
+  <title>Jeds Tool</title>
+  <script>
+    
+(function () {
+  "use strict";
+
+  const INSTANCE = "__NEON_WEBSITE_AUDITOR_V3__";
+
+  if (window[INSTANCE]) {
+    window[INSTANCE].open();
+    return;
+  }
+
+  function initAuditor() {
+    if (window[INSTANCE]) return;
+
+    const root = document.createElement("div");
+    root.id = "neon-website-auditor-root";
+    document.body.appendChild(root);
+
+    const shadow = root.attachShadow({ mode: "open" });
+
+    shadow.innerHTML = `
+      <style>
+        :host {
+          all: initial;
+          position: fixed;
+          right: 18px;
+          bottom: 18px;
+          z-index: 2147483000;
+          font-family: Arial, sans-serif;
+          color: #e8f5e9;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        #launcher {
+          background: #a6ff00;
+          color: #101600;
+          border: 0;
+          border-radius: 30px;
+          padding: 13px 19px;
+          font-weight: 900;
+          font-size: 13px;
+          cursor: pointer;
+          box-shadow: 0 0 18px rgba(166,255,0,.45);
+        }
+
+        #panel {
+          position: absolute;
+          right: 0;
+          bottom: 58px;
+          width: min(780px, calc(100vw - 28px));
+          max-height: min(850px, calc(100vh - 100px));
+          background: #0b100d;
+          border: 1px solid #456d16;
+          border-radius: 15px;
+          box-shadow: 0 0 35px rgba(0,0,0,.65),
+                      0 0 15px rgba(166,255,0,.12);
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+
+        #panel[hidden] {
+          display: none !important;
+        }
+
+        .header {
+          padding: 16px;
+          background: linear-gradient(110deg, #111b0c, #101510);
+          border-bottom: 1px solid #304b1b;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .header h2 {
+          margin: 0;
+          color: #a6ff00;
+          font-size: 16px;
+          letter-spacing: 1px;
+        }
+
+        .header small {
+          display: block;
+          color: #809477;
+          font-size: 10px;
+          margin-top: 4px;
+        }
+
+        button {
+          font-family: inherit;
+        }
+
+        .close {
+          background: transparent;
+          border: 0;
+          color: #a6ff00;
+          font-size: 22px;
+          cursor: pointer;
+        }
+
+        .settings {
+          padding: 14px;
+          display: grid;
+          grid-template-columns: 1fr 110px;
+          gap: 10px;
+          border-bottom: 1px solid #243321;
+        }
+
+        .field {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+
+        .field.full {
+          grid-column: 1 / -1;
+        }
+
+        label {
+          font-size: 10px;
+          color: #a6ff00;
+          font-weight: bold;
+          letter-spacing: .5px;
+        }
+
+        input, textarea {
+          width: 100%;
+          background: #111a13;
+          color: #e8f5e9;
+          border: 1px solid #344b2c;
+          border-radius: 6px;
+          padding: 9px;
+          font-size: 12px;
+          outline: none;
+          min-width: 0;
+        }
+
+        input:focus, textarea:focus {
+          border-color: #a6ff00;
+          box-shadow: 0 0 0 2px rgba(166,255,0,.08);
+        }
+
+        textarea {
+          resize: vertical;
+          min-height: 54px;
+        }
+
+        .actions {
+          grid-column: 1 / -1;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+        }
+
+        .action {
+          border: 1px solid #476c21;
+          background: #172313;
+          color: #c8e7b0;
+          border-radius: 6px;
+          padding: 9px 12px;
+          font-size: 11px;
+          font-weight: bold;
+          cursor: pointer;
+        }
+
+        .action.primary {
+          background: #a6ff00;
+          color: #101600;
+          border-color: #a6ff00;
+        }
+
+        .action.danger {
+          border-color: #753c35;
+          color: #ff9d91;
+          background: #261411;
+        }
+
+        .action:disabled {
+          opacity: .35;
+          cursor: not-allowed;
+        }
+
+        .status {
+          padding: 10px 14px;
+          font-size: 11px;
+          color: #b8c9b0;
+          background: #101710;
+          border-bottom: 1px solid #243321;
+          overflow-wrap: anywhere;
+        }
+
+        .status.error {
+          color: #ff9d91;
+        }
+
+        .status.success {
+          color: #a6ff00;
+        }
+
+        .progress-area {
+          padding: 10px 14px;
+          border-bottom: 1px solid #243321;
+        }
+
+        .progress-track {
+          height: 6px;
+          border-radius: 10px;
+          background: #263322;
+          overflow: hidden;
+        }
+
+        #progressFill {
+          width: 0%;
+          height: 100%;
+          background: #a6ff00;
+          box-shadow: 0 0 10px #a6ff00;
+          transition: width .15s ease;
+        }
+
+        #progressText {
+          color: #8da286;
+          font-size: 10px;
+          margin-top: 6px;
+        }
+
+        .tabs {
+          display: flex;
+          overflow-x: auto;
+          background: #101710;
+          border-bottom: 1px solid #293b25;
+        }
+
+        .tab {
+          border: 0;
+          border-bottom: 2px solid transparent;
+          background: transparent;
+          color: #81917b;
+          padding: 11px 12px;
+          font-size: 10px;
+          white-space: nowrap;
+          cursor: pointer;
+        }
+
+        .tab.active {
+          color: #a6ff00;
+          border-bottom-color: #a6ff00;
+          background: #172116;
+        }
+
+        #results {
+          padding: 14px;
+          overflow: auto;
+          min-height: 180px;
+          flex: 1;
+          font-size: 12px;
+        }
+
+        .stats {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0,1fr));
+          gap: 8px;
+          margin-bottom: 15px;
+        }
+
+        .stat {
+          background: #121c13;
+          border: 1px solid #2b4223;
+          border-radius: 8px;
+          padding: 11px;
+          min-width: 0;
+        }
+
+        .stat strong {
+          display: block;
+          color: #a6ff00;
+          font-size: 20px;
+          margin-bottom: 4px;
+        }
+
+        .stat span {
+          color: #81917b;
+          font-size: 9px;
+          text-transform: uppercase;
+        }
+
+        .section-title {
+          color: #a6ff00;
+          font-size: 12px;
+          font-weight: bold;
+          margin: 16px 0 8px;
+        }
+
+        .info {
+          background: #111a13;
+          border: 1px solid #30452a;
+          border-radius: 7px;
+          padding: 11px;
+          color: #b9c9b1;
+          line-height: 1.6;
+          overflow-wrap: anywhere;
+          margin-bottom: 10px;
+        }
+
+        .warning {
+          background: #211c0e;
+          border: 1px solid #6b5420;
+          color: #e7d18e;
+        }
+
+        .error-box {
+          background: #241411;
+          border: 1px solid #743b32;
+          color: #ffaaa0;
+          padding: 9px;
+          border-radius: 6px;
+          margin: 6px 0;
+          overflow-wrap: anywhere;
+        }
+
+        .table-wrap {
+          width: 100%;
+          overflow-x: auto;
+          border: 1px solid #2b3d27;
+          border-radius: 7px;
+          margin: 8px 0 15px;
+        }
+
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          min-width: 480px;
+          font-size: 10px;
+        }
+
+        th {
+          text-align: left;
+          color: #a6ff00;
+          background: #172116;
+          padding: 9px;
+          border-bottom: 1px solid #344b2c;
+          white-space: nowrap;
+        }
+
+        td {
+          color: #c5d2bf;
+          padding: 8px 9px;
+          border-bottom: 1px solid #233021;
+          vertical-align: top;
+          overflow-wrap: anywhere;
+          max-width: 300px;
+        }
+
+        tr:last-child td {
+          border-bottom: 0;
+        }
+
+        .empty {
+          color: #81917b;
+          padding: 15px 5px;
+          text-align: center;
+        }
+
+        .muted {
+          color: #81917b;
+          font-size: 10px;
+          line-height: 1.5;
+        }
+
+        @media (max-width: 600px) {
+          :host {
+            right: 10px;
+            bottom: 10px;
+          }
+
+          #panel {
+            width: calc(100vw - 20px);
+            max-height: calc(100vh - 85px);
+          }
+
+          .stats {
+            grid-template-columns: repeat(2, minmax(0,1fr));
+          }
+
+          .settings {
+            grid-template-columns: 1fr 85px;
+          }
+        }
+      </style>
+
+      <button id="launcher">⚡ NEON AUDITOR</button>
+
+      <section id="panel" hidden>
+        <div class="header">
+          <div>
+            <h2>NEON WEBSITE AUDITOR</h2>
+            <small>V3.0 · CROSS-DOMAIN SUPPORT</small>
+          </div>
+          <button class="close" id="close">×</button>
+        </div>
+
+        <div class="settings">
+          <div class="field">
+            <label>SITEMAP URL</label>
+            <input id="sitemap" type="url" placeholder="https://example.com/sitemap.xml">
+          </div>
+
+          <div class="field">
+            <label>MAX PAGES</label>
+            <input id="maxPages" type="number" min="1" max="50000" value="5000">
+          </div>
+
+          <div class="field full">
+            <label>KEYWORDS TO SEARCH · COMMA OR NEW LINE SEPARATED</label>
+            <textarea id="keywords" placeholder="keyword one&#10;keyword two"></textarea>
+          </div>
+
+          <div class="field">
+            <label>FIND TEXT</label>
+            <input id="findText" type="text" placeholder="Text to find">
+          </div>
+
+          <div class="field">
+            <label>REPLACE WITH</label>
+            <input id="replaceText" type="text" placeholder="Replacement">
+          </div>
+
+          <div class="actions">
+            <button class="action primary" id="start">▶ START AUDIT</button>
+            <button class="action danger" id="stop" disabled>■ STOP</button>
+            <button class="action" id="export" disabled>↓ EXPORT CSV</button>
+            <button class="action" id="clear">CLEAR RESULTS</button>
+          </div>
+        </div>
+
+        <div class="status" id="status">
+          Ready. Enter a sitemap URL to begin.
+        </div>
+
+        <div class="progress-area">
+          <div class="progress-track">
+            <div id="progressFill"></div>
+          </div>
+          <div id="progressText">Waiting for audit...</div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="overview">OVERVIEW</button>
+          <button class="tab" data-tab="keywords">KEYWORDS</button>
+          <button class="tab" data-tab="seo">SEO</button>
+          <button class="tab" data-tab="links">LINKS</button>
+          <button class="tab" data-tab="duplicates">DUPLICATES</button>
+          <button class="tab" data-tab="replace">REPLACE PREVIEW</button>
+          <button class="tab" data-tab="history">HISTORY</button>
+        </div>
+
+        <div id="results">
+          <div class="empty">Your audit results will appear here.</div>
+        </div>
+      </section>
+    `;
+
+    const $ = (selector) => shadow.querySelector(selector);
+
+    const HISTORY_KEY = "neonWebsiteAuditorHistoryV3";
+
+    const state = {
+      scanning: false,
+      stop: false,
+      tab: "overview",
+      sitemapUrl: "",
+      maxPages: 5000,
+      keywords: [],
+      findText: "",
+      replaceText: "",
+      pageSet: new Set(),
+      pageResults: [],
+      linkCandidateMap: new Map(),
+      linkResults: [],
+      paragraphMap: new Map(),
+      duplicateParagraphs: [],
+      duplicateTitles: [],
+      duplicateDescriptions: [],
+      replacePreview: [],
+      keywordTotals: [],
+      sitemapFiles: [],
+      errors: [],
+      discoveredCount: 0,
+      linkLimitReached: false,
+      history: []
+    };
+
+    function escapeHTML(value) {
+      return String(value ?? "").replace(/[&<>"']/g, function (char) {
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
+        }[char];
+      });
+    }
+
+    function defaultSitemap() {
+      const match = location.pathname.match(/\/(\d{5,})(?:\/|$)/);
+
+      if (match) {
+        return `${location.origin}/${match[1]}/sitemap.xml`;
+      }
+
+      return `${location.origin}/sitemap.xml`;
+    }
+
+    function setStatus(message, type) {
+      const el = $("#status");
+      el.textContent = message;
+      el.className = "status" + (type ? " " + type : "");
+    }
+
+    function setProgress(current, total, label) {
+      const percentage = total
+        ? Math.min(100, Math.round((current / total) * 100))
+        : 0;
+
+      $("#progressFill").style.width = percentage + "%";
+      $("#progressText").textContent =
+        `${label} · ${current.toLocaleString()} / ${total.toLocaleString()} (${percentage}%)`;
+    }
+
+    function setBusy(busy) {
+      $("#start").disabled = busy;
+      $("#stop").disabled = !busy;
+      $("#export").disabled = !state.pageResults.length;
+    }
+
+    function countOccurrences(text, term) {
+      if (!text || !term) return 0;
+
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const matches = text.match(new RegExp(escaped, "gi"));
+
+      return matches ? matches.length : 0;
+    }
+
+    function makeSnippet(text, term) {
+      if (!text || !term) return "";
+
+      const index = text.toLowerCase().indexOf(term.toLowerCase());
+
+      if (index < 0) return "";
+
+      const start = Math.max(0, index - 65);
+      const end = Math.min(text.length, index + term.length + 100);
+
+      return text.slice(start, end).replace(/\s+/g, " ").trim();
+    }
+
+    function normalizePageUrl(raw, base) {
+      try {
+        const url = new URL(raw, base || location.href);
+
+        if (!["http:", "https:"].includes(url.protocol)) {
+          return null;
+        }
+
+        url.hash = "";
+
+        if (/\.(jpg|jpeg|png|gif|webp|svg|ico|pdf|css|js|zip|woff2?|mp4|mp3|xml)$/i.test(url.pathname)) {
+          return null;
+        }
+
+        return url.href;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    /*
+     * Cross-domain requests use CORS mode and omit credentials.
+     * Same-origin requests retain normal same-origin credentials.
+     *
+     * IMPORTANT:
+     * This does not bypass CORS. The remote server must allow
+     * the CMS origin through Access-Control-Allow-Origin.
+     */
+
+    async function fetchResource(rawUrl, resourceType) {
+      const url = new URL(rawUrl);
+      const sameOrigin = url.origin === location.origin;
+      const controller = new AbortController();
+
+      const timeout = window.setTimeout(
+        () => controller.abort(),
+        25000
+      );
+
+      try {
+        const accept = resourceType === "xml"
+          ? "application/xml,text/xml,text/plain,*/*"
+          : "text/html,application/xhtml+xml,*/*";
+
+        const response = await fetch(url.href, {
+          method: "GET",
+          mode: "cors",
+          credentials: sameOrigin ? "same-origin" : "omit",
+          redirect: "follow",
+          cache: "no-store",
+          signal: controller.signal,
+          headers: {
+            "Accept": accept
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `HTTP ${response.status} ${response.statusText || ""} at ${url.href}`
+          );
+        }
+
+        const text = await response.text();
+
+        return {
+          text: text,
+          finalUrl: response.url || url.href,
+          status: response.status
+        };
+
+      } catch (error) {
+        const message = String(error.message || error);
+
+        if (message.startsWith("HTTP ")) {
+          throw error;
+        }
+
+        if (error.name === "AbortError") {
+          throw new Error(`Request timed out after 25 seconds: ${url.href}`);
+        }
+
+        if (!sameOrigin) {
+          throw new Error(
+            `Cross-domain request failed for ${url.origin}. ` +
+            `The browser could not read the response. This may be a CORS, ` +
+            `DNS, TLS, or network restriction. If the URL opens normally in ` +
+            `a browser tab, ask the remote server to allow ${location.origin} ` +
+            `using the Access-Control-Allow-Origin response header. ` +
+            `Browser message: ${message}`
+          );
+        }
+
+        throw new Error(
+          `Request failed for ${url.href}. Browser message: ${message}`
+        );
+
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    }
+
+    async function readSitemap(rawUrl, depth) {
+      if (state.stop) return;
+
+      if (depth > 6) {
+        throw new Error("Sitemap nesting exceeded the maximum depth of 6.");
+      }
+
+      const sitemapUrl = new URL(rawUrl, location.href).href;
+
+      if (state.sitemapFiles.includes(sitemapUrl)) {
+        return;
+      }
+
+      if (state.sitemapFiles.length >= 100) {
+        throw new Error("Maximum of 100 sitemap files reached.");
+      }
+
+      state.sitemapFiles.push(sitemapUrl);
+
+      setStatus(`Reading sitemap: ${sitemapUrl}`);
+
+      const response = await fetchResource(sitemapUrl, "xml");
+
+      const xml = new DOMParser().parseFromString(
+        response.text,
+        "application/xml"
+      );
+
+      if (xml.querySelector("parsererror")) {
+        throw new Error(
+          `Invalid XML response from ${sitemapUrl}. The server may be returning HTML instead of a sitemap.`
+        );
+      }
+
+      const rootName = (
+        xml.documentElement.localName ||
+        xml.documentElement.nodeName ||
+        ""
+      ).toLowerCase();
+
+      let locNodes = Array.from(
+        xml.getElementsByTagNameNS("*", "loc")
+      );
+
+      if (!locNodes.length) {
+        locNodes = Array.from(xml.getElementsByTagName("loc"));
+      }
+
+      const locations = locNodes
+        .map(node => node.textContent.trim())
+        .filter(Boolean);
+
+      if (rootName.includes("sitemapindex")) {
+        for (const childSitemap of locations) {
+          if (state.stop) break;
+
+          const childUrl = new URL(
+            childSitemap,
+            response.finalUrl
+          ).href;
+
+          try {
+            await readSitemap(childUrl, depth + 1);
+          } catch (error) {
+            state.errors.push(
+              `Nested sitemap ${childUrl}: ${error.message}`
+            );
+          }
+        }
+
+      } else if (rootName.includes("urlset")) {
+        for (const location of locations) {
+          const pageUrl = normalizePageUrl(
+            location,
+            response.finalUrl
+          );
+
+          if (pageUrl) {
+            state.pageSet.add(pageUrl);
+          }
+        }
+
+      } else {
+        throw new Error(
+          `Unsupported sitemap XML root "${rootName}" at ${sitemapUrl}. Expected sitemapindex or urlset.`
+        );
+      }
+    }
+
+    async function scanPage(pageUrl) {
+      try {
+        const response = await fetchResource(pageUrl, "html");
+
+        const doc = new DOMParser().parseFromString(
+          response.text,
+          "text/html"
+        );
+
+        const title = (
+          doc.querySelector("title")?.textContent || ""
+        ).trim();
+
+        const description = (
+          doc.querySelector('meta[name="description"]')?.getAttribute("content") ||
+          doc.querySelector('meta[name="Description"]')?.getAttribute("content") ||
+          ""
+        ).trim();
+
+        const h1Elements = Array.from(doc.querySelectorAll("h1"));
+        const h1 = h1Elements
+          .map(element => element.textContent.trim())
+          .filter(Boolean)
+          .join(" | ");
+
+        const issues = [];
+
+        if (!title) {
+          issues.push("Missing title");
+        } else if (title.length > 60) {
+          issues.push(`Long title (${title.length} characters)`);
+        }
+
+        if (!description) {
+          issues.push("Missing meta description");
+        } else if (description.length > 160) {
+          issues.push(`Long meta desc
