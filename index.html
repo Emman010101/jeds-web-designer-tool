@@ -1,8 +1,7 @@
 <html>
-<head>
-  <title>Jeds Tool</title>
-  <script>
-    
+  <head>
+    <script>
+      
 (function () {
   "use strict";
 
@@ -788,4 +787,1135 @@
         if (!description) {
           issues.push("Missing meta description");
         } else if (description.length > 160) {
-          issues.push(`Long meta desc
+          issues.push(`Long meta description (${description.length} characters)`);
+        }
+
+        if (!h1Elements.length) {
+          issues.push("Missing H1");
+        }
+
+        doc.querySelectorAll(
+          "script,style,noscript,template,svg"
+        ).forEach(element => element.remove());
+
+        const bodyText = (
+          doc.body?.textContent || ""
+        ).replace(/\s+/g, " ").trim();
+
+        const keywordCounts = {};
+
+        for (const keyword of state.keywords) {
+          keywordCounts[keyword] = countOccurrences(
+            bodyText,
+            keyword
+          );
+        }
+
+        let replaceCount = 0;
+        let replaceSnippet = "";
+
+        if (state.findText) {
+          replaceCount = countOccurrences(
+            bodyText,
+            state.findText
+          );
+
+          if (replaceCount > 0) {
+            replaceSnippet = makeSnippet(
+              bodyText,
+              state.findText
+            );
+          }
+        }
+
+        const finalUrl = response.finalUrl || pageUrl;
+        const pageOrigin = new URL(finalUrl).origin;
+
+        /*
+         * Collect internal links relative to the scanned website,
+         * not relative to the CMS editor domain.
+         */
+
+        const anchors = Array.from(
+          doc.querySelectorAll("a[href]")
+        );
+
+        for (const anchor of anchors) {
+          try {
+            const href = anchor.getAttribute("href");
+
+            if (!href || /^(mailto:|tel:|javascript:|data:)/i.test(href)) {
+              continue;
+            }
+
+            const linkUrl = new URL(href, finalUrl);
+
+            if (!["http:", "https:"].includes(linkUrl.protocol)) {
+              continue;
+            }
+
+            if (linkUrl.origin !== pageOrigin) {
+              continue;
+            }
+
+            linkUrl.hash = "";
+
+            if (linkUrl.href === finalUrl.split("#")[0]) {
+              continue;
+            }
+
+            const normalizedLink = linkUrl.href;
+
+            if (!state.linkCandidateMap.has(normalizedLink)) {
+              state.linkCandidateMap.set(normalizedLink, {
+                url: normalizedLink,
+                from: new Set()
+              });
+            }
+
+            state.linkCandidateMap
+              .get(normalizedLink)
+              .from.add(pageUrl);
+
+          } catch (error) {
+            // Ignore malformed links.
+          }
+        }
+
+        /*
+         * Exact duplicate paragraph detection.
+         * Paragraphs shorter than 80 characters are ignored.
+         */
+
+        const paragraphs = Array.from(
+          doc.querySelectorAll("p")
+        );
+
+        for (const paragraph of paragraphs) {
+          const text = paragraph.textContent
+            .replace(/\s+/g, " ")
+            .trim();
+
+          if (text.length < 80) continue;
+
+          const key = text.toLowerCase();
+
+          if (!state.paragraphMap.has(key)) {
+            state.paragraphMap.set(key, {
+              text: text,
+              pages: new Set()
+            });
+          }
+
+          state.paragraphMap.get(key).pages.add(pageUrl);
+        }
+
+        return {
+          url: pageUrl,
+          finalUrl: finalUrl,
+          title: title,
+          description: description,
+          h1: h1,
+          h1Count: h1Elements.length,
+          wordCount: bodyText
+            ? bodyText.split(/\s+/).filter(Boolean).length
+            : 0,
+          keywordCounts: keywordCounts,
+          replaceCount: replaceCount,
+          replaceSnippet: replaceSnippet,
+          issues: issues,
+          error: ""
+        };
+
+      } catch (error) {
+        const message = error.message || String(error);
+
+        state.errors.push(
+          `Page ${pageUrl}: ${message}`
+        );
+
+        return {
+          url: pageUrl,
+          finalUrl: pageUrl,
+          title: "",
+          description: "",
+          h1: "",
+          h1Count: 0,
+          wordCount: 0,
+          keywordCounts: {},
+          replaceCount: 0,
+          replaceSnippet: "",
+          issues: [],
+          error: message
+        };
+      }
+    }
+
+    async function mapLimit(items, limit, worker) {
+      let nextIndex = 0;
+
+      const workerCount = Math.min(
+        limit,
+        items.length
+      );
+
+      const workers = Array.from(
+        { length: workerCount },
+        async function () {
+          while (!state.stop) {
+            const index = nextIndex++;
+
+            if (index >= items.length) {
+              break;
+            }
+
+            await worker(items[index], index);
+          }
+        }
+      );
+
+      await Promise.all(workers);
+    }
+
+    async function requestLink(url, method) {
+      const parsed = new URL(url);
+      const sameOrigin = parsed.origin === location.origin;
+      const controller = new AbortController();
+
+      const timeout = window.setTimeout(
+        () => controller.abort(),
+        15000
+      );
+
+      try {
+        return await fetch(parsed.href, {
+          method: method,
+          mode: "cors",
+          credentials: sameOrigin ? "same-origin" : "omit",
+          redirect: "follow",
+          cache: "no-store",
+          signal: controller.signal
+        });
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    }
+
+    async function checkLink(link) {
+      let response;
+
+      try {
+        try {
+          response = await requestLink(link.url, "HEAD");
+
+          if ([403, 405, 501].includes(response.status)) {
+            response = await requestLink(link.url, "GET");
+          }
+
+        } catch (headError) {
+          response = await requestLink(link.url, "GET");
+        }
+
+        const status = response.status;
+
+        let resultType = "OK";
+
+        if (status === 401 || status === 403) {
+          resultType = "Restricted";
+        } else if (status >= 400) {
+          resultType = "Broken";
+        }
+
+        return {
+          url: link.url,
+          from: Array.from(link.from).join(", "),
+          status: status,
+          type: resultType,
+          detail: response.statusText || ""
+        };
+
+      } catch (error) {
+        const parsed = new URL(link.url);
+        const crossOrigin = parsed.origin !== location.origin;
+
+        return {
+          url: link.url,
+          from: Array.from(link.from).join(", "),
+          status: "N/A",
+          type: "Blocked",
+          detail: crossOrigin
+            ? "CORS/network blocked. The destination server may not allow browser access from this CMS domain."
+            : (error.message || String(error))
+        };
+      }
+    }
+
+    function groupDuplicates(field) {
+      const groups = new Map();
+
+      for (const result of state.pageResults) {
+        if (result.error) continue;
+
+        const value = String(result[field] || "")
+          .trim()
+          .toLowerCase();
+
+        if (!value) continue;
+
+        if (!groups.has(value)) {
+          groups.set(value, {
+            value: result[field],
+            pages: []
+          });
+        }
+
+        groups.get(value).pages.push(result.url);
+      }
+
+      return Array.from(groups.values())
+        .filter(group => group.pages.length > 1);
+    }
+
+    function buildDerivedResults() {
+      state.duplicateTitles = groupDuplicates("title");
+      state.duplicateDescriptions = groupDuplicates("description");
+
+      for (const group of state.duplicateTitles) {
+        for (const url of group.pages) {
+          const result = state.pageResults.find(
+            item => item.url === url
+          );
+
+          if (result) {
+            result.issues.push("Duplicate title");
+          }
+        }
+      }
+
+      for (const group of state.duplicateDescriptions) {
+        for (const url of group.pages) {
+          const result = state.pageResults.find(
+            item => item.url === url
+          );
+
+          if (result) {
+            result.issues.push("Duplicate meta description");
+          }
+        }
+      }
+
+      state.duplicateParagraphs = Array.from(
+        state.paragraphMap.values()
+      )
+        .filter(item => item.pages.size > 1)
+        .map(item => ({
+          text: item.text,
+          pages: Array.from(item.pages)
+        }));
+
+      state.keywordTotals = state.keywords.map(keyword => {
+        let total = 0;
+        let pages = 0;
+
+        for (const result of state.pageResults) {
+          const count = result.keywordCounts[keyword] || 0;
+
+          total += count;
+
+          if (count > 0) {
+            pages++;
+          }
+        }
+
+        return {
+          keyword: keyword,
+          total: total,
+          pages: pages
+        };
+      });
+
+      state.replacePreview = state.pageResults
+        .filter(result => result.replaceCount > 0)
+        .map(result => ({
+          url: result.url,
+          count: result.replaceCount,
+          snippet: result.replaceSnippet
+        }));
+    }
+
+    function makeTable(headers, rows, emptyMessage) {
+      if (!rows.length) {
+        return `<div class="empty">${escapeHTML(emptyMessage || "No results found.")}</div>`;
+      }
+
+      return `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                ${headers.map(header => `<th>${escapeHTML(header)}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  ${row.map(cell => `<td>${escapeHTML(cell)}</td>`).join("")}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function metric(label, value) {
+      return `
+        <div class="stat">
+          <strong>${escapeHTML(value)}</strong>
+          <span>${escapeHTML(label)}</span>
+        </div>
+      `;
+    }
+
+    function renderOverview() {
+      const results = state.pageResults;
+      const successful = results.filter(result => !result.error);
+      const failed = results.filter(result => result.error);
+
+      const brokenLinks = state.linkResults.filter(
+        link => link.type === "Broken"
+      );
+
+      const restrictedLinks = state.linkResults.filter(
+        link => link.type === "Restricted"
+      );
+
+      const blockedLinks = state.linkResults.filter(
+        link => link.type === "Blocked"
+      );
+
+      const seoIssueCount = successful.reduce(
+        (total, result) => total + result.issues.length,
+        0
+      );
+
+      const coverage = state.discoveredCount
+        ? Math.round(
+            (results.length / state.discoveredCount) * 100
+          )
+        : 0;
+
+      const issueRows = results
+        .filter(result => result.issues.length)
+        .flatMap(result =>
+          result.issues.map(issue => [
+            result.url,
+            issue
+          ])
+        )
+        .slice(0, 40);
+
+      const errorHTML = state.errors.length
+        ? `
+          <div class="section-title">SCAN ERRORS</div>
+          ${state.errors.slice(0, 30).map(error => `
+            <div class="error-box">${escapeHTML(error)}</div>
+          `).join("")}
+          ${state.errors.length > 30
+            ? `<div class="muted">Showing first 30 of ${state.errors.length} errors.</div>`
+            : ""}
+        `
+        : `<div class="info">No sitemap or page-fetch errors recorded.</div>`;
+
+      return `
+        <div class="stats">
+          ${metric("URLs discovered", state.discoveredCount)}
+          ${metric("Pages scanned", results.length)}
+          ${metric("Successful pages", successful.length)}
+          ${metric("Failed pages", failed.length)}
+          ${metric("SEO issues", seoIssueCount)}
+          ${metric("Broken links", brokenLinks.length)}
+          ${metric("Duplicate paragraphs", state.duplicateParagraphs.length)}
+          ${metric("Coverage", coverage + "%")}
+        </div>
+
+        <div class="section-title">SITEMAP COVERAGE</div>
+        <div class="info">
+          <strong>Sitemap:</strong> ${escapeHTML(state.sitemapUrl)}<br>
+          <strong>Sitemap files processed:</strong> ${state.sitemapFiles.length}<br>
+          <strong>URLs discovered:</strong> ${state.discoveredCount}<br>
+          <strong>Pages selected for scanning:</strong> ${results.length}<br>
+          <strong>Internal links checked:</strong> ${state.linkResults.length}<br>
+          <strong>Restricted links:</strong> ${restrictedLinks.length}<br>
+          <strong>Links blocked by CORS/network:</strong> ${blockedLinks.length}
+          ${state.discoveredCount > state.maxPages
+            ? `<br><strong>Note:</strong> Page scan limited to ${state.maxPages.toLocaleString()} pages.`
+            : ""}
+          ${state.linkLimitReached
+            ? `<br><strong>Note:</strong> Link checking was limited to 5,000 unique links.`
+            : ""}
+        </div>
+
+        <div class="section-title">SEO ISSUES</div>
+        ${makeTable(
+          ["Page URL", "Issue"],
+          issueRows,
+          "No SEO issues found."
+        )}
+
+        <div class="section-title">FETCH AND SITEMAP DIAGNOSTICS</div>
+        ${errorHTML}
+      `;
+    }
+
+    function renderKeywords() {
+      const rows = state.keywordTotals.map(item => [
+        item.keyword,
+        item.total,
+        item.pages
+      ]);
+
+      return `
+        <div class="info">
+          Keyword counts are based on text extracted from successfully fetched page content.
+          Counts are case-insensitive.
+        </div>
+        ${makeTable(
+          ["Keyword", "Total occurrences", "Pages containing keyword"],
+          rows,
+          "No keywords configured or no results available."
+        )}
+      `;
+    }
+
+    function renderSEO() {
+      const rows = [];
+
+      for (const result of state.pageResults) {
+        if (result.error) continue;
+
+        for (const issue of result.issues) {
+          rows.push([
+            result.url,
+            issue,
+            result.title,
+            result.description
+          ]);
+        }
+      }
+
+      const titleRows = state.duplicateTitles.map(group => [
+        group.value,
+        group.pages.join(" | ")
+      ]);
+
+      const descriptionRows = state.duplicateDescriptions.map(group => [
+        group.value,
+        group.pages.join(" | ")
+      ]);
+
+      return `
+        <div class="section-title">PAGE-LEVEL SEO CHECKS</div>
+        ${makeTable(
+          ["Page URL", "Issue", "Title", "Meta description"],
+          rows,
+          "No SEO issues found."
+        )}
+
+        <div class="section-title">DUPLICATE TITLES</div>
+        ${makeTable(
+          ["Duplicate title", "Affected pages"],
+          titleRows,
+          "No duplicate titles found."
+        )}
+
+        <div class="section-title">DUPLICATE META DESCRIPTIONS</div>
+        ${makeTable(
+          ["Duplicate description", "Affected pages"],
+          descriptionRows,
+          "No duplicate meta descriptions found."
+        )}
+      `;
+    }
+
+    function renderLinks() {
+      const rows = state.linkResults.map(link => [
+        link.type,
+        link.status,
+        link.url,
+        link.from,
+        link.detail
+      ]);
+
+      return `
+        <div class="info">
+          Internal links are identified using the origin of each scanned page.
+          A link marked "Blocked" is not confirmed broken; the browser could not
+          read its response because of a CORS or network restriction.
+        </div>
+
+        ${makeTable(
+          ["Result", "HTTP status", "Link URL", "Found on", "Details"],
+          rows,
+          "No internal links have been checked."
+        )}
+      `;
+    }
+
+    function renderDuplicates() {
+      const rows = state.duplicateParagraphs.map(item => [
+        item.text,
+        item.pages.length,
+        item.pages.join(" | ")
+      ]);
+
+      return `
+        <div class="info">
+          Exact duplicate paragraphs are detected after whitespace normalization.
+          Paragraphs shorter than 80 characters are ignored.
+        </div>
+
+        ${makeTable(
+          ["Duplicate paragraph", "Page count", "Affected pages"],
+          rows,
+          "No duplicate paragraphs found."
+        )}
+      `;
+    }
+
+    function renderReplace() {
+      const rows = state.replacePreview.map(item => [
+        item.url,
+        item.count,
+        item.snippet
+      ]);
+
+      return `
+        <div class="info warning">
+          PREVIEW ONLY: This feature does not modify website content.
+          It only identifies matching text and shows a sample of the surrounding content.
+        </div>
+
+        ${makeTable(
+          ["Page URL", "Occurrences", "Content preview"],
+          rows,
+          state.findText
+            ? "No matching text found."
+            : "Enter text in the Find Text field before starting the audit."
+        )}
+      `;
+    }
+
+    function loadHistory() {
+      try {
+        const stored = localStorage.getItem(HISTORY_KEY);
+        return stored ? JSON.parse(stored) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveHistory() {
+      try {
+        const entry = {
+          date: new Date().toISOString(),
+          sitemap: state.sitemapUrl,
+          discovered: state.discoveredCount,
+          scanned: state.pageResults.length,
+          failed: state.pageResults.filter(result => result.error).length,
+          seoIssues: state.pageResults.reduce(
+            (total, result) => total + result.issues.length,
+            0
+          ),
+          brokenLinks: state.linkResults.filter(
+            link => link.type === "Broken"
+          ).length,
+          duplicateParagraphs: state.duplicateParagraphs.length
+        };
+
+        const history = loadHistory();
+
+        history.unshift(entry);
+
+        localStorage.setItem(
+          HISTORY_KEY,
+          JSON.stringify(history.slice(0, 20))
+        );
+
+        state.history = history.slice(0, 20);
+
+      } catch (error) {
+        // History storage may be disabled by the browser.
+      }
+    }
+
+    function renderHistory() {
+      state.history = loadHistory();
+
+      const rows = state.history.map(item => [
+        new Date(item.date).toLocaleString(),
+        item.sitemap,
+        item.scanned,
+        item.failed,
+        item.seoIssues,
+        item.brokenLinks,
+        item.duplicateParagraphs
+      ]);
+
+      return `
+        <div class="info">
+          The latest 20 audit summaries are stored in this browser's local storage.
+          Clearing current results does not delete this history.
+        </div>
+
+        ${makeTable(
+          [
+            "Date",
+            "Sitemap",
+            "Scanned",
+            "Failed",
+            "SEO issues",
+            "Broken links",
+            "Duplicates"
+          ],
+          rows,
+          "No audit history available."
+        )}
+      `;
+    }
+
+    function renderActiveTab() {
+      let html = "";
+
+      switch (state.tab) {
+        case "keywords":
+          html = renderKeywords();
+          break;
+
+        case "seo":
+          html = renderSEO();
+          break;
+
+        case "links":
+          html = renderLinks();
+          break;
+
+        case "duplicates":
+          html = renderDuplicates();
+          break;
+
+        case "replace":
+          html = renderReplace();
+          break;
+
+        case "history":
+          html = renderHistory();
+          break;
+
+        default:
+          html = renderOverview();
+      }
+
+      $("#results").innerHTML = html;
+      $("#export").disabled = !state.pageResults.length;
+    }
+
+    function csvCell(value) {
+      let text = String(value ?? "");
+
+      if (/^[=+\-@]/.test(text)) {
+        text = "'" + text;
+      }
+
+      return '"' + text.replace(/"/g, '""') + '"';
+    }
+
+    function exportCSV() {
+      if (!state.pageResults.length) return;
+
+      const rows = [[
+        "Type",
+        "URL",
+        "Title",
+        "Description",
+        "Status",
+        "Issues",
+        "Keyword counts",
+        "Details"
+      ]];
+
+      for (const result of state.pageResults) {
+        const keywordSummary = Object.entries(
+          result.keywordCounts || {}
+        )
+          .map(([keyword, count]) => `${keyword}: ${count}`)
+          .join("; ");
+
+        rows.push([
+          "Page",
+          result.url,
+          result.title,
+          result.description,
+          result.error ? "Fetch failed" : "Scanned",
+          result.issues.join("; "),
+          keywordSummary,
+          result.error || ""
+        ]);
+      }
+
+      for (const link of state.linkResults) {
+        rows.push([
+          "Internal link",
+          link.url,
+          "",
+          "",
+          link.status,
+          link.type,
+          "",
+          `${link.detail} | Found on: ${link.from}`
+        ]);
+      }
+
+      for (const duplicate of state.duplicateParagraphs) {
+        rows.push([
+          "Duplicate paragraph",
+          duplicate.pages.join(" | "),
+          "",
+          "",
+          "Duplicate",
+          "",
+          "",
+          duplicate.text
+        ]);
+      }
+
+      for (const error of state.errors) {
+        rows.push([
+          "Error",
+          "",
+          "",
+          "",
+          "Failed",
+          "",
+          "",
+          error
+        ]);
+      }
+
+      const csv = rows
+        .map(row => row.map(csvCell).join(","))
+        .join("\r\n");
+
+      const blob = new Blob(
+        ["\uFEFF" + csv],
+        { type: "text/csv;charset=utf-8;" }
+      );
+
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = objectUrl;
+      link.download =
+        "website-audit-" +
+        new Date().toISOString().replace(/[:.]/g, "-") +
+        ".csv";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.setTimeout(
+        () => URL.revokeObjectURL(objectUrl),
+        1500
+      );
+    }
+
+    async function runAudit() {
+      if (state.scanning) return;
+
+      const sitemapInput = $("#sitemap").value.trim();
+
+      if (!sitemapInput) {
+        setStatus("Please enter a sitemap URL.", "error");
+        return;
+      }
+
+      let sitemapUrl;
+
+      try {
+        sitemapUrl = new URL(sitemapInput);
+
+        if (!["http:", "https:"].includes(sitemapUrl.protocol)) {
+          throw new Error("Only HTTP and HTTPS sitemap URLs are supported.");
+        }
+      } catch (error) {
+        setStatus("Invalid sitemap URL: " + error.message, "error");
+        return;
+      }
+
+      const maxPages = Math.max(
+        1,
+        Math.min(
+          50000,
+          parseInt($("#maxPages").value, 10) || 5000
+        )
+      );
+
+      const keywords = $("#keywords").value
+        .split(/[\n,]+/)
+        .map(value => value.trim())
+        .filter(Boolean);
+
+      state.scanning = true;
+      state.stop = false;
+      state.sitemapUrl = sitemapUrl.href;
+      state.maxPages = maxPages;
+      state.keywords = [...new Set(keywords)];
+      state.findText = $("#findText").value.trim();
+      state.replaceText = $("#replaceText").value;
+
+      state.pageSet = new Set();
+      state.pageResults = [];
+      state.linkCandidateMap = new Map();
+      state.linkResults = [];
+      state.paragraphMap = new Map();
+      state.duplicateParagraphs = [];
+      state.duplicateTitles = [];
+      state.duplicateDescriptions = [];
+      state.replacePreview = [];
+      state.keywordTotals = [];
+      state.sitemapFiles = [];
+      state.errors = [];
+      state.discoveredCount = 0;
+      state.linkLimitReached = false;
+
+      setBusy(true);
+      setProgress(0, 100, "Starting");
+      setStatus("Starting website audit...");
+
+      try {
+        /*
+         * STEP 1: Read sitemap and nested sitemap indexes.
+         * No same-origin filtering is applied.
+         */
+
+        await readSitemap(state.sitemapUrl, 0);
+
+        if (state.stop) {
+          setStatus("Audit stopped while reading sitemap.", "error");
+          return;
+        }
+
+        state.discoveredCount = state.pageSet.size;
+
+        if (!state.discoveredCount) {
+          const extra = state.errors.length
+            ? " Check the sitemap errors below."
+            : "";
+
+          throw new Error(
+            "No valid page URLs were found in the sitemap." + extra
+          );
+        }
+
+        const allPages = Array.from(state.pageSet);
+        const pagesToScan = allPages.slice(0, maxPages);
+
+        state.pageResults = new Array(pagesToScan.length);
+
+        /*
+         * STEP 2: Scan pages.
+         * Cross-domain page URLs are accepted.
+         */
+
+        setStatus(
+          `Found ${state.discoveredCount.toLocaleString()} URLs. Scanning ${pagesToScan.length.toLocaleString()} pages...`
+        );
+
+        await mapLimit(
+          pagesToScan,
+          5,
+          async function (pageUrl, index) {
+            const result = await scanPage(pageUrl);
+
+            state.pageResults[index] = result;
+
+            setProgress(
+              index + 1,
+              pagesToScan.length,
+              "Scanning pages"
+            );
+          }
+        );
+
+        buildDerivedResults();
+
+        if (state.stop) {
+          setStatus(
+            "Page scanning stopped. Partial results are available.",
+            "error"
+          );
+
+          renderActiveTab();
+          return;
+        }
+
+        /*
+         * STEP 3: Check internal links.
+         * Links are grouped by the scanned page's own domain.
+         */
+
+        const allLinkCandidates = Array.from(
+          state.linkCandidateMap.values()
+        );
+
+        const linksToCheck = allLinkCandidates.slice(0, 5000);
+
+        state.linkLimitReached = allLinkCandidates.length > 5000;
+        state.linkResults = new Array(linksToCheck.length);
+
+        setStatus(
+          `Page scan complete. Checking ${linksToCheck.length.toLocaleString()} internal links...`
+        );
+
+        await mapLimit(
+          linksToCheck,
+          6,
+          async function (link, index) {
+            state.linkResults[index] = await checkLink(link);
+
+            setProgress(
+              index + 1,
+              linksToCheck.length,
+              "Checking internal links"
+            );
+          }
+        );
+
+        if (state.stop) {
+          setStatus(
+            "Link checking stopped. Partial results are available.",
+            "error"
+          );
+        } else {
+          setStatus(
+            `Audit completed. Scanned ${state.pageResults.length.toLocaleString()} pages and checked ${state.linkResults.length.toLocaleString()} links.`,
+            "success"
+          );
+        }
+
+        saveHistory();
+        renderActiveTab();
+
+      } catch (error) {
+        const message = error.message || String(error);
+
+        state.errors.push(message);
+
+        setStatus(
+          "AUDIT ERROR: " + message,
+          "error"
+        );
+
+        renderActiveTab();
+
+      } finally {
+        state.scanning = false;
+        setBusy(false);
+      }
+    }
+
+    function clearResults() {
+      if (state.scanning) {
+        setStatus("Stop the current audit before clearing results.", "error");
+        return;
+      }
+
+      state.pageSet = new Set();
+      state.pageResults = [];
+      state.linkCandidateMap = new Map();
+      state.linkResults = [];
+      state.paragraphMap = new Map();
+      state.duplicateParagraphs = [];
+      state.duplicateTitles = [];
+      state.duplicateDescriptions = [];
+      state.replacePreview = [];
+      state.keywordTotals = [];
+      state.sitemapFiles = [];
+      state.errors = [];
+      state.discoveredCount = 0;
+      state.linkLimitReached = false;
+
+      $("#progressFill").style.width = "0%";
+      $("#progressText").textContent = "Waiting for audit...";
+
+      setStatus("Current audit results cleared.");
+      renderActiveTab();
+    }
+
+    /*
+     * UI EVENTS
+     */
+
+    $("#sitemap").value = defaultSitemap();
+
+    $("#launcher").addEventListener("click", function () {
+      $("#panel").hidden = !$("#panel").hidden;
+    });
+
+    $("#close").addEventListener("click", function () {
+      $("#panel").hidden = true;
+    });
+
+    $("#start").addEventListener("click", runAudit);
+
+    $("#stop").addEventListener("click", function () {
+      state.stop = true;
+      setStatus("Stopping after current requests finish...");
+    });
+
+    $("#export").addEventListener("click", exportCSV);
+
+    $("#clear").addEventListener("click", clearResults);
+
+    shadow.querySelectorAll(".tab").forEach(button => {
+      button.addEventListener("click", function () {
+        state.tab = button.dataset.tab;
+
+        shadow.querySelectorAll(".tab").forEach(tab => {
+          tab.classList.toggle("active", tab === button);
+        });
+
+        renderActiveTab();
+      });
+    });
+
+    state.history = loadHistory();
+
+    window[INSTANCE] = {
+      open: function () {
+        $("#panel").hidden = false;
+      },
+      close: function () {
+        $("#panel").hidden = true;
+      }
+    };
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      initAuditor,
+      { once: true }
+    );
+  } else {
+    initAuditor();
+  }
+})();
+
+    </script>
+  </head>
+  <body>
+    <p>Hello</p>
+  </body>
+</html>
