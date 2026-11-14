@@ -1,10 +1,13 @@
 <html>
   <head>
     <script>
-      (function () {
+
+(function () {
   "use strict";
 
-  const INSTANCE = "__NEON_WEBSITE_AUDITOR_V3__";
+  const INSTANCE = "__NEON_WEBSITE_AUDITOR_V4__";
+  const HISTORY_KEY = "neonWebsiteAuditorHistoryV4";
+  const PROXY_KEY = "neonWebsiteAuditorProxyV1";
 
   if (window[INSTANCE]) {
     window[INSTANCE].open();
@@ -32,9 +35,7 @@
           color: #e8f5e9;
         }
 
-        * {
-          box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         #launcher {
           background: #a6ff00;
@@ -46,6 +47,7 @@
           font-size: 13px;
           cursor: pointer;
           box-shadow: 0 0 18px rgba(166,255,0,.45);
+          min-height: 44px;
         }
 
         #panel {
@@ -64,17 +66,16 @@
           flex-direction: column;
         }
 
-        #panel[hidden] {
-          display: none !important;
-        }
+        #panel[hidden] { display: none !important; }
 
         .header {
-          padding: 16px;
-          background: linear-gradient(110deg, #111b0c, #101510);
+          padding: 15px;
+          background: linear-gradient(110deg,#111b0c,#101510);
           border-bottom: 1px solid #304b1b;
           display: flex;
           justify-content: space-between;
           align-items: center;
+          flex-shrink: 0;
         }
 
         .header h2 {
@@ -91,35 +92,33 @@
           margin-top: 4px;
         }
 
-        button {
-          font-family: inherit;
-        }
-
         .close {
           background: transparent;
           border: 0;
           color: #a6ff00;
-          font-size: 22px;
+          font-size: 24px;
           cursor: pointer;
+          min-width: 40px;
+          min-height: 40px;
         }
 
         .settings {
-          padding: 14px;
+          padding: 13px;
           display: grid;
-          grid-template-columns: 1fr 110px;
+          grid-template-columns: minmax(0,1fr) 110px;
           gap: 10px;
           border-bottom: 1px solid #243321;
+          flex-shrink: 0;
         }
 
         .field {
           display: flex;
           flex-direction: column;
           gap: 5px;
+          min-width: 0;
         }
 
-        .field.full {
-          grid-column: 1 / -1;
-        }
+        .field.full { grid-column: 1 / -1; }
 
         label {
           font-size: 10px;
@@ -134,10 +133,11 @@
           color: #e8f5e9;
           border: 1px solid #344b2c;
           border-radius: 6px;
-          padding: 9px;
+          padding: 10px;
           font-size: 12px;
           outline: none;
           min-width: 0;
+          font-family: inherit;
         }
 
         input:focus, textarea:focus {
@@ -145,6 +145,2629 @@
           box-shadow: 0 0 0 2px rgba(166,255,0,.08);
         }
 
+        textarea {
+          resize: vertical;
+          min-height: 55px;
+        }
+
+        .actions {
+          grid-column: 1 / -1;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+        }
+
+        .action {
+          border: 1px solid #476c21;
+          background: #172313;
+          color: #c8e7b0;
+          border-radius: 6px;
+          padding: 10px 12px;
+          font-size: 11px;
+          font-weight: bold;
+          cursor: pointer;
+          min-height: 38px;
+        }
+
+        .action.primary {
+          background: #a6ff00;
+          color: #101600;
+          border-color: #a6ff00;
+        }
+
+        .action.danger {
+          border-color: #753c35;
+          color: #ff9d91;
+          background: #261411;
+        }
+
+        .action:disabled {
+          opacity: .35;
+          cursor: not-allowed;
+        }
+
+        .status {
+          padding: 10px 14px;
+          font-size: 11px;
+          color: #b8c9b0;
+          background: #101710;
+          border-bottom: 1px solid #243321;
+          overflow-wrap: anywhere;
+          flex-shrink: 0;
+        }
+
+        .status.error { color: #ff9d91; }
+        .status.success { color: #a6ff00; }
+
+        .progress-area {
+          padding: 10px 14px;
+          border-bottom: 1px solid #243321;
+          flex-shrink: 0;
+        }
+
+        .progress-track {
+          height: 6px;
+          border-radius: 10px;
+          background: #263322;
+          overflow: hidden;
+        }
+
+        #progressFill {
+          width: 0%;
+          height: 100%;
+          background: #a6ff00;
+          box-shadow: 0 0 10px #a6ff00;
+          transition: width .15s ease;
+        }
+
+        #progressText {
+          color: #8da286;
+          font-size: 10px;
+          margin-top: 6px;
+        }
+
+        .tabs {
+          display: flex;
+          overflow-x: auto;
+          background: #101710;
+          border-bottom: 1px solid #293b25;
+          flex-shrink: 0;
+          scrollbar-width: thin;
+        }
+
+        .tab {
+          border: 0;
+          border-bottom: 2px solid transparent;
+          background: transparent;
+          color: #81917b;
+          padding: 12px;
+          font-size: 10px;
+          white-space: nowrap;
+          cursor: pointer;
+          min-height: 42px;
+        }
+
+        .tab.active {
+          color: #a6ff00;
+          border-bottom-color: #a6ff00;
+          background: #172116;
+        }
+
+        #results {
+          padding: 14px;
+          overflow: auto;
+          min-height: 160px;
+          flex: 1;
+          font-size: 12px;
+          overscroll-behavior: contain;
+        }
+
+        .stats {
+          display: grid;
+          grid-template-columns: repeat(4,minmax(0,1fr));
+          gap: 8px;
+          margin-bottom: 15px;
+        }
+
+        .stat {
+          background: #121c13;
+          border: 1px solid #2b4223;
+          border-radius: 8px;
+          padding: 11px;
+          min-width: 0;
+        }
+
+        .stat strong {
+          display: block;
+          color: #a6ff00;
+          font-size: 20px;
+          margin-bottom: 4px;
+        }
+
+        .stat span {
+          color: #81917b;
+          font-size: 9px;
+          text-transform: uppercase;
+        }
+
+        .section-title {
+          color: #a6ff00;
+          font-size: 12px;
+          font-weight: bold;
+          margin: 16px 0 8px;
+        }
+
+        .info {
+          background: #111a13;
+          border: 1px solid #30452a;
+          border-radius: 7px;
+          padding: 11px;
+          color: #b9c9b1;
+          line-height: 1.6;
+          overflow-wrap: anywhere;
+          margin-bottom: 10px;
+        }
+
+        .warning {
+          background: #211c0e;
+          border-color: #6b5420;
+          color: #e7d18e;
+        }
+
+        .error-box {
+          background: #241411;
+          border: 1px solid #743b32;
+          color: #ffaaa0;
+          padding: 9px;
+          border-radius: 6px;
+          margin: 6px 0;
+          overflow-wrap: anywhere;
+        }
+
+        .table-wrap {
+          width: 100%;
+          overflow-x: auto;
+          border: 1px solid #2b3d27;
+          border-radius: 7px;
+          margin: 8px 0 15px;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          min-width: 480px;
+          font-size: 10px;
+        }
+
+        th {
+          text-align: left;
+          color: #a6ff00;
+          background: #172116;
+          padding: 9px;
+          border-bottom: 1px solid #344b2c;
+          white-space: nowrap;
+        }
+
+        td {
+          color: #c5d2bf;
+          padding: 8px 9px;
+          border-bottom: 1px solid #233021;
+          vertical-align: top;
+          overflow-wrap: anywhere;
+          max-width: 300px;
+        }
+
+        tr:last-child td { border-bottom: 0; }
+
+        .empty {
+          color: #81917b;
+          padding: 15px 5px;
+          text-align: center;
+        }
+
+        .muted {
+          color: #81917b;
+          font-size: 10px;
+          line-height: 1.5;
+        }
+
+        @media (max-width: 600px) {
+          :host {
+            right: 10px;
+            bottom: 10px;
+          }
+
+          #panel {
+            position: fixed;
+            top: max(8px, env(safe-area-inset-top));
+            right: 8px;
+            bottom: calc(66px + env(safe-area-inset-bottom));
+            left: 8px;
+            width: auto;
+            max-height: none;
+            border-radius: 12px;
+          }
+
+          .header { padding: 10px 12px; }
+          .header h2 { font-size: 14px; }
+
+          .settings {
+            padding: 10px;
+            gap: 8px;
+          }
+
+          input, textarea {
+            font-size: 16px;
+            min-height: 42px;
+          }
+
+          textarea { min-height: 65px; }
+
+          .action {
+            flex: 1 1 auto;
+            min-height: 42px;
+          }
+
+          .stats {
+            grid-template-columns: repeat(2,minmax(0,1fr));
+          }
+
+          #results { padding: 10px; }
+          .tab { padding: 11px 10px; }
+        }
+
+        @media (max-width: 360px) {
+          .settings {
+            grid-template-columns: minmax(0,1fr) 82px;
+          }
+
+          .header h2 { font-size: 12px; }
+        }
+      </style>
+
+      <button id="launcher">⚡ NEON AUDITOR</button>
+
+      <section id="panel" hidden>
+        <div class="header">
+          <div>
+            <h2>NEON WEBSITE AUDITOR</h2>
+            <small>V4.0 · CLOUDFLARE PROXY · MOBILE READY</small>
+          </div>
+          <button class="close" id="close">×</button>
+        </div>
+
+        <div class="settings">
+          <div class="field">
+            <label>SITEMAP URL</label>
+            <input id="sitemap" type="url"
+              placeholder="https://example.com/sitemap.xml">
+          </div>
+
+          <div class="field">
+            <label>MAX PAGES</label>
+            <input id="maxPages" type="number"
+              min="1" max="50000" value="1000">
+          </div>
+
+          <div class="field full">
+            <label>CLOUDFLARE WORKER URL</label>
+            <input id="proxyUrl" type="url"
+              placeholder="https://your-worker.workers.dev">
+          </div>
+
+          <div class="field full">
+            <label>KEYWORDS · COMMA OR NEW LINE SEPARATED</label>
+            <textarea id="keywords"
+              placeholder="keyword one&#10;keyword two"></textarea>
+          </div>
+
+          <div class="field">
+            <label>FIND TEXT</label>
+            <input id="findText" type="text" placeholder="Text to find">
+          </div>
+
+          <div class="field">
+            <label>REPLACE WITH</label>
+            <input id="replaceText" type="text" placeholder="Replacement">
+          </div>
+
+          <div class="actions">
+            <button class="action primary" id="start">▶ START AUDIT</button>
+            <button class="action danger" id="stop" disabled>■ STOP</button>
+            <button class="action" id="export" disabled>↓ CSV</button>
+            <button class="action" id="clear">CLEAR</button>
+          </div>
+        </div>
+
+        <div class="status" id="status">
+          Ready. Enter a sitemap and Worker URL.
+        </div>
+
+        <div class="progress-area">
+          <div class="progress-track">
+            <div id="progressFill"></div>
+          </div>
+          <div id="progressText">Waiting for audit...</div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="overview">OVERVIEW</button>
+          <button class="tab" data-tab="keywords">KEYWORDS</button>
+          <button class="tab" data-tab="seo">SEO</button>
+          <button class="tab" data-tab="links">LINKS</button>
+          <button class="tab" data-tab="duplicates">DUPLICATES</button>
+          <button class="tab" data-tab="replace">REPLACE</button>
+          <button class="tab" data-tab="history">HISTORY</button>
+        </div>
+
+        <div id="results">
+          <div class="empty">Your audit results will appear here.</div>
+        </div>
+      </section>
+    `;
+
+    const $ = selector => shadow.querySelector(selector);
+
+    const state = {
+      scanning: false,
+      stop: false,
+      tab: "overview",
+      sitemapUrl: "",
+      maxPages: 1000,
+      keywords: [],
+      findText: "",
+      replaceText: "",
+      pageSet: new Set(),
+      pageResults: [],
+      linkCandidateMap: new Map(),
+      linkResults: [],
+      paragraphMap: new Map(),
+      duplicateParagraphs: [],
+      duplicateTitles: [],
+      duplicateDescriptions: [],
+      replacePreview: [],
+      keywordTotals: [],
+      sitemapFiles: [],
+      errors: [],
+      discoveredCount: 0,
+      linkLimitReached: false
+    };
+
+    // ==========================================
+    // PART 2: UTILITY FUNCTIONS + FETCHING
+    // ==========================================
+
+    function escapeHTML(value) {
+        return String(value ?? "").replace(/[&<>"']/g, char => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        })[char]);
+    }
+
+    function storageGet(key, fallback = null) {
+        try {
+            const value = localStorage.getItem(key);
+            return value === null ? fallback : JSON.parse(value);
+        } catch (error) {
+            return fallback;
+        }
+    }
+
+    function storageSet(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (error) {
+            console.warn("Could not save auditor setting:", error);
+        }
+    }
+
+    function defaultSitemap() {
+        const current = $("#sitemap")?.value?.trim();
+
+        if (current) {
+            return current;
+        }
+
+        return new URL("/sitemap.xml", window.location.href).href;
+    }
+
+    function setStatus(message, type = "info") {
+        const status = $("#status");
+
+        if (!status) return;
+
+        status.textContent = message;
+        status.dataset.type = type;
+    }
+
+    function setProgress(current, total, label = "") {
+        const fill = $("#progressFill");
+        const text = $("#progressText");
+
+        const safeTotal = Math.max(1, Number(total) || 1);
+        const safeCurrent = Math.max(0, Number(current) || 0);
+        const percentage = Math.min(
+            100,
+            Math.round((safeCurrent / safeTotal) * 100)
+        );
+
+        if (fill) {
+            fill.style.width = percentage + "%";
+        }
+
+        if (text) {
+            text.textContent = label
+                ? `${label} — ${safeCurrent}/${safeTotal}`
+                : `${percentage}%`;
+        }
+    }
+
+    function setBusy(busy) {
+        const start = $("#start");
+        const stop = $("#stop");
+        const exportButton = $("#export");
+
+        if (start) start.disabled = busy;
+        if (stop) stop.disabled = !busy;
+        if (exportButton) {
+            exportButton.disabled = busy || state.pageResults.length === 0;
+        }
+
+        state.scanning = busy;
+    }
+
+    function countOccurrences(text, searchTerm) {
+        if (!text || !searchTerm) return 0;
+
+        const source = String(text).toLowerCase();
+        const term = String(searchTerm).toLowerCase();
+
+        let count = 0;
+        let position = 0;
+
+        while (true) {
+            position = source.indexOf(term, position);
+
+            if (position === -1) break;
+
+            count++;
+            position += term.length;
+        }
+
+        return count;
+    }
+
+    function makeSnippet(text, searchTerm = "", length = 180) {
+        const content = String(text || "").replace(/\s+/g, " ").trim();
+
+        if (!content) return "";
+
+        if (!searchTerm) {
+            return content.length > length
+                ? content.slice(0, length) + "..."
+                : content;
+        }
+
+        const index = content.toLowerCase().indexOf(
+            String(searchTerm).toLowerCase()
+        );
+
+        if (index === -1) {
+            return content.length > length
+                ? content.slice(0, length) + "..."
+                : content;
+        }
+
+        const start = Math.max(0, index - Math.floor(length / 3));
+        const end = Math.min(content.length, start + length);
+
+        return (start > 0 ? "..." : "") +
+            content.slice(start, end) +
+            (end < content.length ? "..." : "");
+    }
+
+    function normalizePageUrl(raw, base) {
+        try {
+            const url = new URL(raw, base);
+
+            if (!["http:", "https:"].includes(url.protocol)) {
+                return null;
+            }
+
+            url.hash = "";
+
+            // Remove common tracking parameters.
+            const trackingParams = [
+                "utm_source",
+                "utm_medium",
+                "utm_campaign",
+                "utm_term",
+                "utm_content",
+                "gclid",
+                "fbclid",
+                "msclkid"
+            ];
+
+            trackingParams.forEach(param => {
+                url.searchParams.delete(param);
+            });
+
+            return url.href;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    // ==========================================
+    // CLOUDFLARE WORKER PROXY
+    // ==========================================
+
+    function getProxyEndpoint() {
+        const input = $("#proxyUrl");
+        const saved = storageGet(PROXY_KEY, "");
+
+        const value = String(
+            input?.value?.trim() || saved || ""
+        ).trim();
+
+        if (value && input) {
+            storageSet(PROXY_KEY, value);
+        }
+
+        return value.replace(/\/+$/, "");
+    }
+
+    async function fetchTarget(rawUrl, resourceType = "page") {
+        const targetUrl = normalizePageUrl(
+            rawUrl,
+            window.location.href
+        );
+
+        if (!targetUrl) {
+            throw new Error("Invalid or unsupported URL: " + rawUrl);
+        }
+
+        const proxyEndpoint = getProxyEndpoint();
+
+        let requestUrl = targetUrl;
+
+        // Route the request through the Cloudflare Worker
+        // when a proxy URL has been configured.
+        if (proxyEndpoint) {
+            let proxyUrl;
+
+            try {
+                proxyUrl = new URL(proxyEndpoint);
+            } catch (error) {
+                throw new Error("Invalid Cloudflare Worker URL.");
+            }
+
+            if (proxyUrl.protocol !== "https:") {
+                throw new Error("The Cloudflare Worker URL must use HTTPS.");
+            }
+
+            proxyUrl.searchParams.set("url", targetUrl);
+            requestUrl = proxyUrl.href;
+        }
+
+        const acceptHeader = resourceType === "sitemap"
+            ? "application/xml, text/xml, application/rss+xml, */*"
+            : "text/html, application/xhtml+xml, */*";
+
+        let response;
+
+        try {
+            response = await fetch(requestUrl, {
+                method: "GET",
+                mode: "cors",
+                credentials: "omit",
+                cache: "no-store",
+                redirect: "follow",
+                headers: {
+                    "Accept": acceptHeader
+                }
+            });
+        } catch (error) {
+            if (!proxyEndpoint) {
+                throw new Error(
+                    "Failed to fetch. This website may block cross-origin " +
+                    "requests. Configure your Cloudflare Worker URL."
+                );
+            }
+
+            throw new Error(
+                "Cloudflare Worker request failed: " +
+                (error.message || "Network or CORS error")
+            );
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                `Request failed (${response.status}) for ${targetUrl}`
+            );
+        }
+
+        return response;
+    }
+
+    async function fetchResource(rawUrl, resourceType = "page") {
+        return await fetchTarget(rawUrl, resourceType);
+    }
+
+    // ==========================================
+    // SITEMAP READER
+    // Supports sitemap.xml and sitemap indexes
+    // ==========================================
+
+    async function readSitemap(rawUrl, depth = 0) {
+        if (state.stop) return;
+
+        const MAX_DEPTH = 5;
+
+        if (depth > MAX_DEPTH) {
+            state.errors.push({
+                url: rawUrl,
+                error: "Maximum sitemap nesting depth reached."
+            });
+            return;
+        }
+
+        const sitemapUrl = normalizePageUrl(
+            rawUrl,
+            window.location.href
+        );
+
+        if (!sitemapUrl) {
+            state.errors.push({
+                url: rawUrl,
+                error: "Invalid sitemap URL."
+            });
+            return;
+        }
+
+        if (state.sitemapFiles.has(sitemapUrl)) {
+            return;
+        }
+
+        state.sitemapFiles.add(sitemapUrl);
+
+        try {
+            const response = await fetchResource(
+                sitemapUrl,
+                "sitemap"
+            );
+
+            const xmlText = await response.text();
+
+            if (!xmlText.trim()) {
+                throw new Error("The sitemap returned an empty response.");
+            }
+
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(
+                xmlText,
+                "application/xml"
+            );
+
+            if (xml.querySelector("parsererror")) {
+                throw new Error("Invalid XML sitemap.");
+            }
+
+            const root = xml.documentElement;
+            const rootName = (
+                root?.localName ||
+                root?.nodeName ||
+                ""
+            ).toLowerCase();
+
+            const locations = Array.from(
+                xml.getElementsByTagName("*")
+            )
+                .filter(node =>
+                    (node.localName || node.nodeName).toLowerCase() === "loc"
+                )
+                .map(node => node.textContent.trim())
+                .filter(Boolean);
+
+            if (!locations.length) {
+                throw new Error("No URLs were found in this sitemap.");
+            }
+
+            const isSitemapIndex =
+                rootName.includes("sitemapindex") ||
+                rootName.includes("sitemap-index");
+
+            if (isSitemapIndex) {
+                for (const childSitemap of locations) {
+                    if (state.stop) break;
+
+                    const maxPages = Number(state.maxPages) || 500;
+
+                    if (state.pageSet.size >= maxPages) {
+                        break;
+                    }
+
+                    await readSitemap(childSitemap, depth + 1);
+                }
+
+                return;
+            }
+
+            const maxPages = Number(state.maxPages) || 500;
+
+            for (const location of locations) {
+                if (state.stop) break;
+
+                if (state.pageSet.size >= maxPages) {
+                    break;
+                }
+
+                const pageUrl = normalizePageUrl(
+                    location,
+                    sitemapUrl
+                );
+
+                if (!pageUrl) continue;
+
+                if (!state.pageSet.has(pageUrl)) {
+                    state.pageSet.add(pageUrl);
+                    state.discoveredCount++;
+                }
+            }
+
+        } catch (error) {
+            state.errors.push({
+                url: sitemapUrl,
+                error: error.message || "Unknown sitemap error."
+            });
+        }
+    }
+
+    // ==========================================
+    // PART 3: PAGE SCANNING + INTERNAL LINKS
+    // ==========================================
+
+    // Make sure all result collections are available.
+    state.pageResults ||= [];
+    state.linkResults ||= [];
+    state.keywordResults ||= [];
+    state.replaceResults ||= [];
+    state.errors ||= [];
+
+    state.sitemapFiles ||= new Set();
+    state.pageSet ||= new Set();
+    state.internalLinks ||= new Map();
+
+    if (!(state.sitemapFiles instanceof Set)) {
+        state.sitemapFiles = new Set(state.sitemapFiles);
+    }
+
+    if (!(state.pageSet instanceof Set)) {
+        state.pageSet = new Set(state.pageSet);
+    }
+
+    if (!(state.internalLinks instanceof Map)) {
+        state.internalLinks = new Map();
+    }
+
+    state.scannedCount ||= 0;
+
+    // ==========================================
+    // READ KEYWORDS
+    // ==========================================
+
+    function getKeywords() {
+        const input = $("#keywords");
+
+        if (!input) return [];
+
+        return [...new Set(
+            input.value
+                .split(/[\n,;]+/)
+                .map(keyword => keyword.trim())
+                .filter(Boolean)
+        )];
+    }
+
+    function getFindReplaceValues() {
+        const findInput =
+            $("#findText") ||
+            $("#find");
+
+        const replaceInput =
+            $("#replaceText") ||
+            $("#replace");
+
+        return {
+            find: findInput?.value?.trim() || "",
+            replace: replaceInput?.value ?? ""
+        };
+    }
+
+    // ==========================================
+    // EXTRACT PAGE INFORMATION
+    // ==========================================
+
+    function extractPageData(html, pageUrl) {
+        const parser = new DOMParser();
+
+        const doc = parser.parseFromString(
+            html,
+            "text/html"
+        );
+
+        const title =
+            doc.querySelector("title")?.textContent?.trim() || "";
+
+        const metaDescription =
+            doc.querySelector('meta[name="description"]')
+                ?.getAttribute("content")
+                ?.trim() || "";
+
+        const canonicalElement =
+            doc.querySelector('link[rel="canonical"]');
+
+        const canonical = canonicalElement
+            ? normalizePageUrl(
+                canonicalElement.getAttribute("href"),
+                pageUrl
+            )
+            : "";
+
+        const robots =
+            doc.querySelector('meta[name="robots"]')
+                ?.getAttribute("content")
+                ?.trim() || "";
+
+        const headings = {};
+
+        for (let level = 1; level <= 6; level++) {
+            const elements = Array.from(
+                doc.querySelectorAll(`h${level}`)
+            );
+
+            headings[`h${level}`] = elements.map(element =>
+                element.textContent.trim()
+            );
+        }
+
+        const h1Count = headings.h1.length;
+
+        const images = Array.from(
+            doc.querySelectorAll("img")
+        ).map(image => ({
+            src: normalizePageUrl(
+                image.getAttribute("src") ||
+                image.getAttribute("data-src") ||
+                "",
+                pageUrl
+            ) || image.getAttribute("src") || "",
+
+            alt: image.getAttribute("alt") || "",
+
+            hasAlt: image.hasAttribute("alt") &&
+                image.getAttribute("alt").trim() !== ""
+        }));
+
+        const body = doc.body || doc.documentElement;
+
+        // Remove elements that should not contribute to content analysis.
+        body.querySelectorAll(
+            "script, style, noscript, svg, iframe"
+        ).forEach(element => element.remove());
+
+        const textContent = (body.textContent || "")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        const wordCount = textContent
+            ? textContent.split(/\s+/).length
+            : 0;
+
+        const pageUrlObject = new URL(pageUrl);
+
+        const internalLinks = Array.from(
+            doc.querySelectorAll("a[href]")
+        )
+            .map(anchor => {
+                const href = anchor.getAttribute("href");
+
+                if (!href) return null;
+
+                const normalized = normalizePageUrl(
+                    href,
+                    pageUrl
+                );
+
+                if (!normalized) return null;
+
+                let linkUrl;
+
+                try {
+                    linkUrl = new URL(normalized);
+                } catch (error) {
+                    return null;
+                }
+
+                if (linkUrl.origin !== pageUrlObject.origin) {
+                    return null;
+                }
+
+                return {
+                    url: normalized,
+                    text: anchor.textContent.trim(),
+                    sourcePage: pageUrl
+                };
+            })
+            .filter(Boolean);
+
+        return {
+            url: pageUrl,
+            title,
+            metaDescription,
+            canonical,
+            robots,
+            noindex: /noindex/i.test(robots),
+            headings,
+            h1Count,
+            images,
+            imageCount: images.length,
+            missingAltCount: images.filter(
+                image => !image.hasAlt
+            ).length,
+            wordCount,
+            textContent,
+            internalLinks
+        };
+    }
+
+    // ==========================================
+    // KEYWORD OCCURRENCE ANALYSIS
+    // ==========================================
+
+    function analyzeKeywords(pageData) {
+        const keywords = getKeywords();
+
+        if (!keywords.length) return;
+
+        keywords.forEach(keyword => {
+            const occurrences = countOccurrences(
+                pageData.textContent,
+                keyword
+            );
+
+            state.keywordResults.push({
+                url: pageData.url,
+                keyword,
+                occurrences,
+                snippet: occurrences
+                    ? makeSnippet(
+                        pageData.textContent,
+                        keyword
+                    )
+                    : ""
+            });
+        });
+    }
+
+    // ==========================================
+    // FIND AND REPLACE ANALYSIS
+    // ==========================================
+
+    function analyzeFindReplace(pageData) {
+        const values = getFindReplaceValues();
+
+        if (!values.find) return;
+
+        const occurrences = countOccurrences(
+            pageData.textContent,
+            values.find
+        );
+
+        if (!occurrences) return;
+
+        const escapedFind = values.find.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+        );
+
+        const preview = pageData.textContent.replace(
+            new RegExp(escapedFind, "gi"),
+            values.replace
+        );
+
+        state.replaceResults.push({
+            url: pageData.url,
+            find: values.find,
+            replace: values.replace,
+            occurrences,
+            preview: makeSnippet(preview)
+        });
+    }
+
+    // ==========================================
+    // SCAN ONE PAGE
+    // ==========================================
+
+    async function scanPage(pageUrl) {
+        if (state.stop) return null;
+
+        try {
+            const response = await fetchResource(
+                pageUrl,
+                "page"
+            );
+
+            const contentType =
+                response.headers.get("content-type") || "";
+
+            if (
+                contentType &&
+                !/html|xhtml/i.test(contentType)
+            ) {
+                throw new Error(
+                    "URL did not return an HTML document."
+                );
+            }
+
+            const html = await response.text();
+
+            if (!html.trim()) {
+                throw new Error("The page returned empty content.");
+            }
+
+            const pageData = extractPageData(
+                html,
+                response.url || pageUrl
+            );
+
+            state.pageResults.push(pageData);
+
+            analyzeKeywords(pageData);
+            analyzeFindReplace(pageData);
+
+            // Collect unique internal links for later checking.
+            pageData.internalLinks.forEach(link => {
+                if (!state.internalLinks.has(link.url)) {
+                    state.internalLinks.set(link.url, {
+                        url: link.url,
+                        sourcePages: [link.sourcePage],
+                        anchorText: link.text
+                    });
+                } else {
+                    const existing = state.internalLinks.get(
+                        link.url
+                    );
+
+                    if (
+                        !existing.sourcePages.includes(
+                            link.sourcePage
+                        )
+                    ) {
+                        existing.sourcePages.push(
+                            link.sourcePage
+                        );
+                    }
+                }
+            });
+
+            state.scannedCount++;
+
+            return pageData;
+
+        } catch (error) {
+            state.errors.push({
+                url: pageUrl,
+                error: error.message || "Page scanning failed."
+            });
+
+            return null;
+        }
+    }
+
+    // ==========================================
+    // CONCURRENT TASK RUNNER
+    // ==========================================
+
+    async function runPool(items, concurrency, callback) {
+        let index = 0;
+
+        const workers = Array.from(
+            {
+                length: Math.min(
+                    concurrency,
+                    items.length
+                )
+            },
+            async () => {
+                while (!state.stop) {
+                    const currentIndex = index++;
+
+                    if (currentIndex >= items.length) {
+                        break;
+                    }
+
+                    await callback(
+                        items[currentIndex],
+                        currentIndex
+                    );
+                }
+            }
+        );
+
+        await Promise.all(workers);
+    }
+
+    // ==========================================
+    // CHECK INTERNAL LINKS
+    // ==========================================
+
+    async function checkInternalLinks() {
+        const links = Array.from(
+            state.internalLinks.values()
+        );
+
+        if (!links.length) return;
+
+        let checked = 0;
+
+        await runPool(
+            links,
+            5,
+            async link => {
+                if (state.stop) return;
+
+                const result = {
+                    url: link.url,
+                    sourcePages: link.sourcePages,
+                    anchorText: link.anchorText,
+                    status: "Unknown",
+                    broken: false,
+                    error: ""
+                };
+
+                try {
+                    const response = await fetchResource(
+                        link.url,
+                        "page"
+                    );
+
+                    result.status = response.status;
+
+                    if (!response.ok) {
+                        result.broken = true;
+                        result.error =
+                            `HTTP ${response.status}`;
+                    }
+
+                } catch (error) {
+                    result.broken = true;
+                    result.status = "Failed";
+                    result.error =
+                        error.message || "Request failed.";
+                }
+
+                state.linkResults.push(result);
+
+                checked++;
+
+                setProgress(
+                    checked,
+                    links.length,
+                    "Checking internal links"
+                );
+            }
+        );
+    }
+
+    // ==========================================
+    // RESULT SUMMARY HELPERS
+    // ==========================================
+
+    function getPageSummary() {
+        const pages = state.pageResults;
+
+        return {
+            total: pages.length,
+
+            missingTitles: pages.filter(
+                page => !page.title
+            ).length,
+
+            missingDescriptions: pages.filter(
+                page => !page.metaDescription
+            ).length,
+
+            multipleH1: pages.filter(
+                page => page.h1Count > 1
+            ).length,
+
+            missingH1: pages.filter(
+                page => page.h1Count === 0
+            ).length,
+
+            missingImageAlt: pages.reduce(
+                (total, page) =>
+                    total + page.missingAltCount,
+                0
+            ),
+
+            noindex: pages.filter(
+                page => page.noindex
+            ).length,
+
+            brokenLinks: state.linkResults.filter(
+                link => link.broken
+            ).length
+        };
+    }
+
+    // ==========================================
+    // PART 4: RESULTS + HISTORY + CSV EXPORT
+    // ==========================================
+
+    state.activeTab ||= "overview";
+    state.history ||= storageGet(HISTORY_KEY, []);
+
+    // ==========================================
+    // RESULTS CONTAINER
+    // ==========================================
+
+    function getResultsContainer() {
+        let container = shadow.querySelector(
+            "#resultsContent, #results-content, " +
+            "#tabContent, #tab-content, " +
+            "[data-results-content], .results-content"
+        );
+
+        if (container) return container;
+
+        const parent = shadow.querySelector(
+            "#results, #resultsArea, #results-area, " +
+            ".results-area, .results-panel"
+        ) || shadow.querySelector("#panel") || root;
+
+        container = document.createElement("div");
+        container.id = "auditorResultsContent";
+        container.className = "results-content";
+
+        parent.appendChild(container);
+
+        return container;
+    }
+
+    // ==========================================
+    // RENDER HELPERS
+    // ==========================================
+
+    function renderMetric(label, value, description = "") {
+        return `
+            <div class="metric-card">
+                <div class="metric-label">
+                    ${escapeHTML(label)}
+                </div>
+
+                <div class="metric-value">
+                    ${escapeHTML(value)}
+                </div>
+
+                ${
+                    description
+                        ? `<div class="metric-description">
+                            ${escapeHTML(description)}
+                           </div>`
+                        : ""
+                }
+            </div>
+        `;
+    }
+
+    function renderEmpty(message) {
+        return `
+            <div class="empty-state">
+                <div class="empty-title">No results yet</div>
+                <div class="empty-description">
+                    ${escapeHTML(message)}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderTable(headers, rows) {
+        if (!rows.length) {
+            return renderEmpty("Nothing to display.");
+        }
+
+        return `
+            <div class="table-wrapper">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            ${headers.map(header => `
+                                <th>${escapeHTML(header)}</th>
+                            `).join("")}
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        ${rows.map(row => `
+                            <tr>
+                                ${row.map(cell => `
+                                    <td>${cell}</td>
+                                `).join("")}
+                            </tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function renderUrl(url) {
+        return `
+            <a
+                href="${escapeHTML(url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="audit-link"
+            >
+                ${escapeHTML(url)}
+            </a>
+        `;
+    }
+
+    function renderStatus(value, success = false) {
+        const statusClass = success
+            ? "success"
+            : "warning";
+
+        return `
+            <span class="status-pill ${statusClass}">
+                ${escapeHTML(value)}
+            </span>
+        `;
+    }
+
+    // ==========================================
+    // OVERVIEW DASHBOARD
+    // ==========================================
+
+    function renderOverview() {
+        const summary = getPageSummary();
+
+        const totalPages = summary.total;
+        const brokenLinks = summary.brokenLinks;
+
+        const issueCount =
+            summary.missingTitles +
+            summary.missingDescriptions +
+            summary.missingH1 +
+            summary.multipleH1 +
+            summary.missingImageAlt +
+            summary.noindex +
+            brokenLinks;
+
+        return `
+            <div class="overview-grid">
+
+                ${renderMetric(
+                    "Pages Scanned",
+                    totalPages,
+                    "Pages successfully analyzed"
+                )}
+
+                ${renderMetric(
+                    "Internal Links",
+                    state.internalLinks.size,
+                    "Unique internal links discovered"
+                )}
+
+                ${renderMetric(
+                    "Broken Links",
+                    brokenLinks,
+                    "Links that failed to load"
+                )}
+
+                ${renderMetric(
+                    "Total Issues",
+                    issueCount,
+                    "Detected SEO and content issues"
+                )}
+
+            </div>
+
+            <div class="section-heading">
+                SEO Overview
+            </div>
+
+            <div class="overview-grid">
+
+                ${renderMetric(
+                    "Missing Titles",
+                    summary.missingTitles
+                )}
+
+                ${renderMetric(
+                    "Missing Descriptions",
+                    summary.missingDescriptions
+                )}
+
+                ${renderMetric(
+                    "Missing H1",
+                    summary.missingH1
+                )}
+
+                ${renderMetric(
+                    "Multiple H1",
+                    summary.multipleH1
+                )}
+
+                ${renderMetric(
+                    "Missing Image ALT",
+                    summary.missingImageAlt
+                )}
+
+                ${renderMetric(
+                    "Noindex Pages",
+                    summary.noindex
+                )}
+
+            </div>
+
+            <div class="section-heading">
+                Scan Information
+            </div>
+
+            <div class="info-card">
+                <div>
+                    <span class="info-label">Discovered URLs</span>
+                    <strong>${state.discoveredCount || 0}</strong>
+                </div>
+
+                <div>
+                    <span class="info-label">Scanned URLs</span>
+                    <strong>${state.scannedCount || 0}</strong>
+                </div>
+
+                <div>
+                    <span class="info-label">Sitemap Files</span>
+                    <strong>${state.sitemapFiles.size}</strong>
+                </div>
+
+                <div>
+                    <span class="info-label">Errors</span>
+                    <strong>${state.errors.length}</strong>
+                </div>
+            </div>
+
+            ${
+                state.errors.length
+                    ? `
+                        <div class="section-heading">
+                            Scan Warnings
+                        </div>
+
+                        <div class="warning-card">
+                            ${state.errors.length} request(s) failed.
+                            Check the Errors tab for details.
+                        </div>
+                    `
+                    : ""
+            }
+        `;
+    }
+
+    // ==========================================
+    // PAGES TABLE
+    // ==========================================
+
+    function renderPages() {
+        if (!state.pageResults.length) {
+            return renderEmpty(
+                "Run an audit to see scanned pages."
+            );
+        }
+
+        const rows = state.pageResults.map(page => [
+            renderUrl(page.url),
+
+            escapeHTML(page.title || "Missing"),
+
+            escapeHTML(page.metaDescription || "Missing"),
+
+            page.h1Count,
+
+            page.wordCount,
+
+            page.imageCount,
+
+            page.missingAltCount,
+
+            page.noindex
+                ? renderStatus("Noindex")
+                : renderStatus("Indexable", true)
+        ]);
+
+        return `
+            <div class="section-heading">
+                Scanned Pages (${state.pageResults.length})
+            </div>
+
+            ${renderTable(
+                [
+                    "URL",
+                    "Title",
+                    "Meta Description",
+                    "H1",
+                    "Words",
+                    "Images",
+                    "Missing ALT",
+                    "Indexing"
+                ],
+                rows
+            )}
+        `;
+    }
+
+    // ==========================================
+    // INTERNAL LINKS TABLE
+    // ==========================================
+
+    function renderLinks() {
+        if (!state.linkResults.length) {
+            return renderEmpty(
+                "Internal link checks will appear after page scanning."
+            );
+        }
+
+        const rows = state.linkResults.map(link => [
+            renderUrl(link.url),
+
+            escapeHTML(link.status),
+
+            link.broken
+                ? renderStatus("Broken")
+                : renderStatus("Working", true),
+
+            escapeHTML(
+                link.sourcePages.length.toString()
+            ),
+
+            escapeHTML(
+                link.sourcePages[0] || ""
+            ),
+
+            escapeHTML(link.error || "—")
+        ]);
+
+        return `
+            <div class="section-heading">
+                Internal Links (${state.linkResults.length})
+            </div>
+
+            ${renderTable(
+                [
+                    "Destination",
+                    "HTTP Status",
+                    "Result",
+                    "Source Count",
+                    "Example Source",
+                    "Error"
+                ],
+                rows
+            )}
+        `;
+    }
+
+    // ==========================================
+    // KEYWORD RESULTS
+    // ==========================================
+
+    function renderKeywords() {
+        if (!state.keywordResults.length) {
+            return renderEmpty(
+                "Enter keywords before starting the audit."
+            );
+        }
+
+        const rows = state.keywordResults.map(item => [
+            renderUrl(item.url),
+
+            escapeHTML(item.keyword),
+
+            item.occurrences,
+
+            escapeHTML(
+                item.occurrences
+                    ? item.snippet
+                    : "No occurrence found"
+            )
+        ]);
+
+        return `
+            <div class="section-heading">
+                Keyword Analysis
+            </div>
+
+            ${renderTable(
+                [
+                    "Page",
+                    "Keyword",
+                    "Occurrences",
+                    "Content Preview"
+                ],
+                rows
+            )}
+        `;
+    }
+
+    // ==========================================
+    // FIND AND REPLACE RESULTS
+    // ==========================================
+
+    function renderReplace() {
+        if (!state.replaceResults.length) {
+            return renderEmpty(
+                "No matching text was found."
+            );
+        }
+
+        const rows = state.replaceResults.map(item => [
+            renderUrl(item.url),
+
+            escapeHTML(item.find),
+
+            escapeHTML(item.replace),
+
+            item.occurrences,
+
+            escapeHTML(item.preview)
+        ]);
+
+        return `
+            <div class="section-heading">
+                Find and Replace Matches
+            </div>
+
+            <div class="warning-card">
+                These are suggested text replacements.
+                No website content has been changed.
+            </div>
+
+            ${renderTable(
+                [
+                    "Page",
+                    "Find",
+                    "Replace With",
+                    "Matches",
+                    "Preview"
+                ],
+                rows
+            )}
+        `;
+    }
+
+    // ==========================================
+    // ERRORS TABLE
+    // ==========================================
+
+    function renderErrors() {
+        if (!state.errors.length) {
+            return renderEmpty(
+                "No scanning errors were recorded."
+            );
+        }
+
+        const rows = state.errors.map(error => [
+            renderUrl(error.url),
+
+            escapeHTML(error.error)
+        ]);
+
+        return `
+            <div class="section-heading">
+                Scan Errors (${state.errors.length})
+            </div>
+
+            ${renderTable(
+                [
+                    "URL",
+                    "Error"
+                ],
+                rows
+            )}
+        `;
+    }
+
+    // ==========================================
+    // HISTORY
+    // ==========================================
+
+    function loadHistory() {
+        const history = storageGet(
+            HISTORY_KEY,
+            []
+        );
+
+        state.history = Array.isArray(history)
+            ? history
+            : [];
+
+        return state.history;
+    }
+
+    function saveHistory() {
+        storageSet(
+            HISTORY_KEY,
+            state.history
+        );
+    }
+
+    function addHistoryEntry() {
+        const summary = getPageSummary();
+
+        const entry = {
+            date: new Date().toISOString(),
+
+            sitemap: $("#sitemap")?.value?.trim() || "",
+
+            pagesScanned: state.pageResults.length,
+
+            linksChecked: state.linkResults.length,
+
+            brokenLinks: summary.brokenLinks,
+
+            missingTitles: summary.missingTitles,
+
+            missingDescriptions: summary.missingDescriptions,
+
+            missingH1: summary.missingH1,
+
+            multipleH1: summary.multipleH1,
+
+            missingImageAlt: summary.missingImageAlt,
+
+            errors: state.errors.length
+        };
+
+        state.history.unshift(entry);
+
+        // Keep the latest 30 audit records.
+        state.history = state.history.slice(0, 30);
+
+        saveHistory();
+    }
+
+    function renderHistory() {
+        loadHistory();
+
+        if (!state.history.length) {
+            return renderEmpty(
+                "Completed audit history will appear here."
+            );
+        }
+
+        const rows = state.history.map(entry => [
+            escapeHTML(
+                new Date(entry.date).toLocaleString()
+            ),
+
+            escapeHTML(entry.sitemap || "Unknown"),
+
+            entry.pagesScanned,
+
+            entry.linksChecked,
+
+            entry.brokenLinks,
+
+            entry.errors
+        ]);
+
+        return `
+            <div class="section-heading">
+                Audit History
+            </div>
+
+            ${renderTable(
+                [
+                    "Date",
+                    "Sitemap",
+                    "Pages",
+                    "Links",
+                    "Broken Links",
+                    "Errors"
+                ],
+                rows
+            )}
+        `;
+    }
+
+    // ==========================================
+    // RENDER ACTIVE TAB
+    // ==========================================
+
+    function renderResults(tab = state.activeTab) {
+        state.activeTab = tab || "overview";
+
+        const container = getResultsContainer();
+
+        const renderers = {
+            overview: renderOverview,
+            pages: renderPages,
+            links: renderLinks,
+            keywords: renderKeywords,
+            replace: renderReplace,
+            errors: renderErrors,
+            history: renderHistory
+        };
+
+        const renderer =
+            renderers[state.activeTab] ||
+            renderOverview;
+
+        container.innerHTML = renderer();
+
+        // Update active tab styling.
+        shadow.querySelectorAll("[data-tab]").forEach(button => {
+            const active =
+                button.getAttribute("data-tab") === state.activeTab;
+
+            button.classList.toggle("active", active);
+            button.setAttribute(
+                "aria-selected",
+                active ? "true" : "false"
+            );
+        });
+
+        const exportButton = $("#export");
+
+        if (exportButton) {
+            exportButton.disabled =
+                state.scanning ||
+                (
+                    state.pageResults.length === 0 &&
+                    state.linkResults.length === 0
+                );
+        }
+    }
+
+    // ==========================================
+    // CSV EXPORT HELPERS
+    // ==========================================
+
+    function csvEscape(value) {
+        const text = String(value ?? "");
+
+        return '"' + text.replace(/"/g, '""') + '"';
+    }
+
+    function downloadCSV(filename, headers, rows) {
+        const csv = [
+            headers.map(csvEscape).join(","),
+
+            ...rows.map(row =>
+                row.map(csvEscape).join(",")
+            )
+        ].join("\r\n");
+
+        const blob = new Blob(
+            ["\uFEFF" + csv],
+            {
+                type: "text/csv;charset=utf-8;"
+            }
+        );
+
+        const url = URL.createObjectURL(blob);
+
+        const anchor = document.createElement("a");
+
+        anchor.href = url;
+        anchor.download = filename;
+
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+    }
+
+    // ==========================================
+    // EXPORT CURRENT RESULTS
+    // ==========================================
+
+    function exportResults() {
+        const tab = state.activeTab;
+
+        if (
+            !state.pageResults.length &&
+            !state.linkResults.length
+        ) {
+            setStatus(
+                "There are no results to export.",
+                "warning"
+            );
+            return;
+        }
+
+        const timestamp = new Date()
+            .toISOString()
+            .replace(/[:.]/g, "-");
+
+        if (tab === "links") {
+            const headers = [
+                "URL",
+                "Status",
+                "Broken",
+                "Source Pages",
+                "Example Source",
+                "Error"
+            ];
+
+            const rows = state.linkResults.map(link => [
+                link.url,
+                link.status,
+                link.broken,
+                link.sourcePages.join(" | "),
+                link.sourcePages[0] || "",
+                link.error
+            ]);
+
+            downloadCSV(
+                `neon-auditor-links-${timestamp}.csv`,
+                headers,
+                rows
+            );
+
+            return;
+        }
+
+        if (tab === "keywords") {
+            const headers = [
+                "Page URL",
+                "Keyword",
+                "Occurrences",
+                "Snippet"
+            ];
+
+            const rows = state.keywordResults.map(item => [
+                item.url,
+                item.keyword,
+                item.occurrences,
+                item.snippet
+            ]);
+
+            downloadCSV(
+                `neon-auditor-keywords-${timestamp}.csv`,
+                headers,
+                rows
+            );
+
+            return;
+        }
+
+        if (tab === "replace") {
+            const headers = [
+                "Page URL",
+                "Find",
+                "Replace",
+                "Occurrences",
+                "Preview"
+            ];
+
+            const rows = state.replaceResults.map(item => [
+                item.url,
+                item.find,
+                item.replace,
+                item.occurrences,
+                item.preview
+            ]);
+
+            downloadCSV(
+                `neon-auditor-replacements-${timestamp}.csv`,
+                headers,
+                rows
+            );
+
+            return;
+        }
+
+        if (tab === "errors") {
+            const headers = [
+                "URL",
+                "Error"
+            ];
+
+            const rows = state.errors.map(error => [
+                error.url,
+                error.error
+            ]);
+
+            downloadCSV(
+                `neon-auditor-errors-${timestamp}.csv`,
+                headers,
+                rows
+            );
+
+            return;
+        }
+
+        // Default export: all scanned pages.
+        const headers = [
+            "URL",
+            "Title",
+            "Meta Description",
+            "Canonical",
+            "Robots",
+            "H1 Count",
+            "H1 Headings",
+            "Word Count",
+            "Image Count",
+            "Missing Image ALT",
+            "Internal Link Count"
+        ];
+
+        const rows = state.pageResults.map(page => [
+            page.url,
+            page.title,
+            page.metaDescription,
+            page.canonical,
+            page.robots,
+            page.h1Count,
+            page.headings.h1.join(" | "),
+            page.wordCount,
+            page.imageCount,
+            page.missingAltCount,
+            page.internalLinks.length
+        ]);
+
+        downloadCSV(
+            `neon-auditor-pages-${timestamp}.csv`,
+            headers,
+            rows
+        );
+    }
+
+    // ==========================================
+    // PART 5: AUDIT RUNNER + EVENT LISTENERS
+    // ==========================================
+
+    // ==========================================
+    // RESET AUDIT DATA
+    // ==========================================
+
+    function resetAuditData() {
+        state.stop = false;
+
+        state.pageResults = [];
+        state.linkResults = [];
+        state.keywordResults = [];
+        state.replaceResults = [];
+        state.errors = [];
+
+        state.sitemapFiles = new Set();
+        state.pageSet = new Set();
+        state.internalLinks = new Map();
+
+        state.discoveredCount = 0;
+        state.scannedCount = 0;
+    }
+
+    // ==========================================
+    // CLEAR RESULTS
+    // ==========================================
+
+    function clearResults() {
+        if (state.scanning) {
+            setStatus(
+                "Stop the current scan before clearing results.",
+                "warning"
+            );
+            return;
+        }
+
+        resetAuditData();
+
+        setProgress(0, 1, "Ready");
+
+        setStatus(
+            "Results cleared. Ready for a new audit.",
+            "info"
+        );
+
+        renderResults("overview");
+    }
+
+    // ==========================================
+    // START AUDIT
+    // ==========================================
+
+    async function runAudit() {
+        if (state.scanning) return;
+
+        const sitemapInput = $("#sitemap");
+
+        const sitemapUrl =
+            sitemapInput?.value?.trim() ||
+            defaultSitemap();
+
+        if (!sitemapUrl) {
+            setStatus(
+                "Please enter a sitemap URL.",
+                "warning"
+            );
+            return;
+        }
+
+        try {
+            const parsedSitemap = new URL(sitemapUrl);
+
+            if (
+                !["http:", "https:"].includes(
+                    parsedSitemap.protocol
+                )
+            ) {
+                throw new Error("Invalid sitemap protocol.");
+            }
+
+        } catch (error) {
+            setStatus(
+                "Please enter a valid sitemap URL.",
+                "error"
+            );
+            return;
+        }
+
+        const maxPagesInput =
+            $("#maxPages") ||
+            $("#max-pages") ||
+            $("#pageLimit");
+
+        const requestedMaxPages = Number(
+            maxPagesInput?.value
+        );
+
+        state.maxPages = Math.max(
+            1,
+            Math.min(
+                10000,
+                Number.isFinite(requestedMaxPages) &&
+                requestedMaxPages > 0
+                    ? Math.floor(requestedMaxPages)
+                    : 500
+            )
+        );
+
+        if (maxPagesInput) {
+            maxPagesInput.value = state.maxPages;
+        }
+
+        resetAuditData();
+
+        setBusy(true);
+
+        setProgress(0, 1, "Starting audit");
+
+        setStatus(
+            "Reading sitemap...",
+            "info"
+        );
+
+        try {
+            // ----------------------------------
+            // STEP 1: READ SITEMAP
+            // ----------------------------------
+
+            await readSitemap(sitemapUrl);
+
+            if (state.stop) {
+                setStatus(
+                    "Audit stopped while reading sitemap.",
+                    "warning"
+                );
+
+                return;
+            }
+
+            const pageUrls = Array.from(
+                state.pageSet
+            );
+
+            if (!pageUrls.length) {
+                renderResults(
+                    state.errors.length
+                        ? "errors"
+                        : "overview"
+                );
+
+                setStatus(
+                    "No pages were discovered. Check the sitemap URL, proxy configuration, and errors.",
+                    "error"
+                );
+
+                return;
+            }
+
+            // ----------------------------------
+            // STEP 2: SCAN PAGES
+            // ----------------------------------
+
+            setStatus(
+                `Found ${pageUrls.length} pages. Starting page analysis...`,
+                "info"
+            );
+
+            setProgress(
+                0,
+                pageUrls.length,
+                "Scanning pages"
+            );
+
+            await runPool(
+                pageUrls,
+                4,
+                async (pageUrl, index) => {
+                    if (state.stop) return;
+
+                    await scanPage(pageUrl);
+
+                    setProgress(
+                        index + 1,
+                        pageUrls.length,
+                        "Scanning pages"
+                    );
+                }
+            );
+
+            if (state.stop) {
+                setStatus(
+                    "Page scanning stopped. Showing partial results.",
+                    "warning"
+                );
+
+                addHistoryEntry();
+                renderResults("overview");
+
+                return;
+            }
+
+            // ----------------------------------
+            // STEP 3: CHECK INTERNAL LINKS
+            // ----------------------------------
+
+            const totalLinks = state.internalLinks.size;
+
+            if (totalLinks > 0) {
+                setStatus(
+                    `Checking ${totalLinks} internal links...`,
+                    "info"
+                );
+
+                await checkInternalLinks();
+            }
+
+            if (state.stop) {
+                setStatus(
+                    "Link checking stopped. Showing partial results.",
+                    "warning"
+                );
+            } else {
+                setStatus(
+                    "Audit completed successfully.",
+                    "success"
+                );
+            }
+
+            // ----------------------------------
+            // STEP 4: SAVE HISTORY
+            // ----------------------------------
+
+            addHistoryEntry();
+
+            // ----------------------------------
+            // STEP 5: DISPLAY RESULTS
+            // ----------------------------------
+
+            renderResults("overview");
+
+            const summary = getPageSummary();
+
+            setProgress(
+                1,
+                1,
+                "Audit complete"
+            );
+
+            if (!state.stop) {
+                setStatus(
+                    `Completed: ${state.pageResults.length} pages scanned, ` +
+                    `${state.linkResults.length} links checked, ` +
+                    `${summary.brokenLinks} broken links, ` +
+                    `${state.errors.length} errors.`,
+                    "success"
+                );
+            }
+
+        } catch (error) {
+            console.error(
+                "Neon Website Auditor Error:",
+                error
+            );
+
+            state.errors.push({
+                url: sitemapUrl,
+                error: error.message || "Unexpected audit error."
+            });
+
+            setStatus(
+                error.message || "An unexpected error occurred.",
+                "error"
+            );
+
+            renderResults("errors");
+
+        } finally {
+            setBusy(false);
+
+            // Refresh the current tab and button states.
+            renderResults(state.activeTab);
+        }
+    }
+
+    // ==========================================
+    // STOP AUDIT
+    // ==========================================
+
+    function stopAudit() {
+        if (!state.scanning) return;
+
+        state.stop = true;
+
+        setStatus(
+            "Stopping audit after the current requests finish...",
+            "warning"
+        );
+    }
+
+    // ==========================================
+    // PANEL CONTROLS
+    // ==========================================
+
+    function setPanelOpen(open) {
+        const panel = $("#panel");
+
+        if (!panel) return;
+
+        panel.hidden = !open;
+
+        panel.classList.toggle(
+            "open",
+            open
+        );
+
+        panel.setAttribute(
+            "aria-hidden",
+            open ? "false" : "true"
+        );
+    }
+
+    // ==========================================
+    // EVENT LISTENERS
+    // ==========================================
+
+    function bindEvents() {
+        // Start audit.
+        const startButton = $("#start");
+
+        if (startButton) {
+            startButton.addEventListener(
+                "click",
+                runAudit
+            );
+        }
+
+        // Stop audit.
+        const stopButton = $("#stop");
+
+        if (stopButton) {
+            stopButton.addEventListener(
+                "click",
+                stopAudit
+            );
+        }
+
+        // Export results.
+        const exportButton = $("#export");
+
+        if (exportButton) {
+            exportButton.addEventListener(
+                "click",
+                exportResults
+            );
+        }
+
+        // Clear results.
+        const clearButton =
+            $("#clear") ||
+            $("#clearResults");
+
+        if (clearButton) {
+            clearButton.addEventListener(
+                "click",
+                clearResults
+            );
+        }
+
+        // Save Cloudflare Worker URL.
+        const proxyInput = $("#proxyUrl");
+
+        if (proxyInput) {
+            const savedProxy = storageGet(
+                PROXY_KEY,
+                ""
+            );
+
+            if (!proxyInput.value && savedProxy) {
+                proxyInput.value = savedProxy;
+            }
+
+            proxyInput.addEventListener(
+                "change",
+                () => {
+                    storageSet(
+                        PROXY_KEY,
+                        proxyInput.value.trim()
+                    );
+                }
+            );
+
+            proxyInput.addEventListener(
+                "input",
+                () => {
+                    storageSet(
+                        PROXY_KEY,
+                        proxyInput.value.trim()
+                    );
+                }
+            );
+        }
+
+        // Tab navigation.
+        shadow.addEventListener(
+            "click",
+            event => {
+                const tabButton = event.target.closest(
+                    "[data-tab]"
+                );
+
+                if (!tabButton) return;
+
+                const tab = tabButton.getAttribute(
+                    "data-tab"
+                );
+
+                if (!tab) return;
+
+                renderResults(tab);
+            }
+        );
+
+        // Open panel.
+        const launcher =
+            $("#launcher") ||
+            $("#toggle") ||
+            shadow.querySelector(
+                '[data-action="toggle"]'
+            );
+
+        if (launcher) {
+            launcher.addEventListener(
+                "click",
+                () => {
+                    const panel = $("#panel");
+
+                    if (!panel) return;
+
+                    const isOpen =
+                        !panel.hidden &&
+                        panel.classList.contains("open");
+
+                    setPanelOpen(!isOpen);
+                }
+            );
+        }
+
+        // Close panel.
+        const closeButton =
+            $("#close") ||
+            $("#closePanel") ||
+            shadow.querySelector(
+                '[data-action="close"]'
+            );
+
+        if (closeButton) {
+            closeButton.addEventListener(
+                "click",
+                () => setPanelOpen(false)
+            );
+        }
+
+        // Close panel with Escape.
+        shadow.addEventListener(
+            "keydown",
+            event => {
+                if (event.key === "Escape") {
+                    setPanelOpen(false);
+                }
+            }
+        );
+    }
+
+    // ==========================================
+    // INITIALIZE AUDITOR
+    // ==========================================
+
+    function initializeAuditor() {
+        // Ensure the root is attached to the document.
+        if (!root.isConnected) {
+            document.body.appendChild(root);
+        }
+
+        // Restore saved settings.
+        const proxyInput = $("#proxyUrl");
+
+        if (proxyInput) {
+            proxyInput.value =
+                storageGet(PROXY_KEY, "") ||
+                proxyInput.value ||
+                "";
+        }
+
+        // Load previous audit history.
+        loadHistory();
+
+        // Connect all buttons and controls.
+        bindEvents();
+
+        // Set initial interface state.
+        setBusy(false);
+
+        setProgress(
+            0,
+            1,
+            "Ready"
+        );
+
+        setStatus(
+            "Ready to scan.",
+            "info"
+        );
+
+        // Show the overview.
+        renderResults("overview");
+
+        console.log(
+            "Neon Website Auditor V4 initialized successfully."
+        );
+    }
+
+    // ==========================================
+    // RUN INITIALIZATION
+    // ==========================================
+
+    initializeAuditor();
+
+}
+
+// Start the auditor.
+initAuditor();
+
+})();
 
     </script>
   </head>
