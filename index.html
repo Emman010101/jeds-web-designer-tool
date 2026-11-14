@@ -1,2785 +1,1087 @@
-<html>
-  <head>
-    <script>
-
-(function () {
-  "use strict";
-
-  const INSTANCE = "__NEON_WEBSITE_AUDITOR_V4__";
-  const HISTORY_KEY = "neonWebsiteAuditorHistoryV4";
-  const PROXY_KEY = "neonWebsiteAuditorProxyV1";
-
-  if (window[INSTANCE]) {
-    window[INSTANCE].open();
-    return;
-  }
-
-  function initAuditor() {
-    if (window[INSTANCE]) return;
-
-    const root = document.createElement("div");
-    root.id = "neon-website-auditor-root";
-    document.body.appendChild(root);
-
-    const shadow = root.attachShadow({ mode: "open" });
-
-    shadow.innerHTML = `
-      <style>
-        :host {
-          all: initial;
-          position: fixed;
-          right: 18px;
-          bottom: 18px;
-          z-index: 2147483000;
-          font-family: Arial, sans-serif;
-          color: #e8f5e9;
-        }
-
-        * { box-sizing: border-box; }
-
-        #launcher {
-          background: #a6ff00;
-          color: #101600;
-          border: 0;
-          border-radius: 30px;
-          padding: 13px 19px;
-          font-weight: 900;
-          font-size: 13px;
-          cursor: pointer;
-          box-shadow: 0 0 18px rgba(166,255,0,.45);
-          min-height: 44px;
-        }
-
-        #panel {
-          position: absolute;
-          right: 0;
-          bottom: 58px;
-          width: min(780px, calc(100vw - 28px));
-          max-height: min(850px, calc(100vh - 100px));
-          background: #0b100d;
-          border: 1px solid #456d16;
-          border-radius: 15px;
-          box-shadow: 0 0 35px rgba(0,0,0,.65),
-                      0 0 15px rgba(166,255,0,.12);
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-
-        #panel[hidden] { display: none !important; }
-
-        .header {
-          padding: 15px;
-          background: linear-gradient(110deg,#111b0c,#101510);
-          border-bottom: 1px solid #304b1b;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-shrink: 0;
-        }
-
-        .header h2 {
-          margin: 0;
-          color: #a6ff00;
-          font-size: 16px;
-          letter-spacing: 1px;
-        }
-
-        .header small {
-          display: block;
-          color: #809477;
-          font-size: 10px;
-          margin-top: 4px;
-        }
-
-        .close {
-          background: transparent;
-          border: 0;
-          color: #a6ff00;
-          font-size: 24px;
-          cursor: pointer;
-          min-width: 40px;
-          min-height: 40px;
-        }
-
-        .settings {
-          padding: 13px;
-          display: grid;
-          grid-template-columns: minmax(0,1fr) 110px;
-          gap: 10px;
-          border-bottom: 1px solid #243321;
-          flex-shrink: 0;
-        }
-
-        .field {
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-          min-width: 0;
-        }
-
-        .field.full { grid-column: 1 / -1; }
-
-        label {
-          font-size: 10px;
-          color: #a6ff00;
-          font-weight: bold;
-          letter-spacing: .5px;
-        }
-
-        input, textarea {
-          width: 100%;
-          background: #111a13;
-          color: #e8f5e9;
-          border: 1px solid #344b2c;
-          border-radius: 6px;
-          padding: 10px;
-          font-size: 12px;
-          outline: none;
-          min-width: 0;
-          font-family: inherit;
-        }
-
-        input:focus, textarea:focus {
-          border-color: #a6ff00;
-          box-shadow: 0 0 0 2px rgba(166,255,0,.08);
-        }
-
-        textarea {
-          resize: vertical;
-          min-height: 55px;
-        }
-
-        .actions {
-          grid-column: 1 / -1;
-          display: flex;
-          flex-wrap: wrap;
-          gap: 7px;
-        }
-
-        .action {
-          border: 1px solid #476c21;
-          background: #172313;
-          color: #c8e7b0;
-          border-radius: 6px;
-          padding: 10px 12px;
-          font-size: 11px;
-          font-weight: bold;
-          cursor: pointer;
-          min-height: 38px;
-        }
-
-        .action.primary {
-          background: #a6ff00;
-          color: #101600;
-          border-color: #a6ff00;
-        }
-
-        .action.danger {
-          border-color: #753c35;
-          color: #ff9d91;
-          background: #261411;
-        }
-
-        .action:disabled {
-          opacity: .35;
-          cursor: not-allowed;
-        }
-
-        .status {
-          padding: 10px 14px;
-          font-size: 11px;
-          color: #b8c9b0;
-          background: #101710;
-          border-bottom: 1px solid #243321;
-          overflow-wrap: anywhere;
-          flex-shrink: 0;
-        }
-
-        .status.error { color: #ff9d91; }
-        .status.success { color: #a6ff00; }
-
-        .progress-area {
-          padding: 10px 14px;
-          border-bottom: 1px solid #243321;
-          flex-shrink: 0;
-        }
-
-        .progress-track {
-          height: 6px;
-          border-radius: 10px;
-          background: #263322;
-          overflow: hidden;
-        }
-
-        #progressFill {
-          width: 0%;
-          height: 100%;
-          background: #a6ff00;
-          box-shadow: 0 0 10px #a6ff00;
-          transition: width .15s ease;
-        }
-
-        #progressText {
-          color: #8da286;
-          font-size: 10px;
-          margin-top: 6px;
-        }
-
-        .tabs {
-          display: flex;
-          overflow-x: auto;
-          background: #101710;
-          border-bottom: 1px solid #293b25;
-          flex-shrink: 0;
-          scrollbar-width: thin;
-        }
-
-        .tab {
-          border: 0;
-          border-bottom: 2px solid transparent;
-          background: transparent;
-          color: #81917b;
-          padding: 12px;
-          font-size: 10px;
-          white-space: nowrap;
-          cursor: pointer;
-          min-height: 42px;
-        }
-
-        .tab.active {
-          color: #a6ff00;
-          border-bottom-color: #a6ff00;
-          background: #172116;
-        }
-
-        #results {
-          padding: 14px;
-          overflow: auto;
-          min-height: 160px;
-          flex: 1;
-          font-size: 12px;
-          overscroll-behavior: contain;
-        }
-
-        .stats {
-          display: grid;
-          grid-template-columns: repeat(4,minmax(0,1fr));
-          gap: 8px;
-          margin-bottom: 15px;
-        }
-
-        .stat {
-          background: #121c13;
-          border: 1px solid #2b4223;
-          border-radius: 8px;
-          padding: 11px;
-          min-width: 0;
-        }
-
-        .stat strong {
-          display: block;
-          color: #a6ff00;
-          font-size: 20px;
-          margin-bottom: 4px;
-        }
-
-        .stat span {
-          color: #81917b;
-          font-size: 9px;
-          text-transform: uppercase;
-        }
-
-        .section-title {
-          color: #a6ff00;
-          font-size: 12px;
-          font-weight: bold;
-          margin: 16px 0 8px;
-        }
-
-        .info {
-          background: #111a13;
-          border: 1px solid #30452a;
-          border-radius: 7px;
-          padding: 11px;
-          color: #b9c9b1;
-          line-height: 1.6;
-          overflow-wrap: anywhere;
-          margin-bottom: 10px;
-        }
-
-        .warning {
-          background: #211c0e;
-          border-color: #6b5420;
-          color: #e7d18e;
-        }
-
-        .error-box {
-          background: #241411;
-          border: 1px solid #743b32;
-          color: #ffaaa0;
-          padding: 9px;
-          border-radius: 6px;
-          margin: 6px 0;
-          overflow-wrap: anywhere;
-        }
-
-        .table-wrap {
-          width: 100%;
-          overflow-x: auto;
-          border: 1px solid #2b3d27;
-          border-radius: 7px;
-          margin: 8px 0 15px;
-          -webkit-overflow-scrolling: touch;
-        }
-
-        table {
-          border-collapse: collapse;
-          width: 100%;
-          min-width: 480px;
-          font-size: 10px;
-        }
-
-        th {
-          text-align: left;
-          color: #a6ff00;
-          background: #172116;
-          padding: 9px;
-          border-bottom: 1px solid #344b2c;
-          white-space: nowrap;
-        }
-
-        td {
-          color: #c5d2bf;
-          padding: 8px 9px;
-          border-bottom: 1px solid #233021;
-          vertical-align: top;
-          overflow-wrap: anywhere;
-          max-width: 300px;
-        }
-
-        tr:last-child td { border-bottom: 0; }
-
-        .empty {
-          color: #81917b;
-          padding: 15px 5px;
-          text-align: center;
-        }
-
-        .muted {
-          color: #81917b;
-          font-size: 10px;
-          line-height: 1.5;
-        }
-
-        @media (max-width: 600px) {
-          :host {
-            right: 10px;
-            bottom: 10px;
-          }
-
-          #panel {
-            position: fixed;
-            top: max(8px, env(safe-area-inset-top));
-            right: 8px;
-            bottom: calc(66px + env(safe-area-inset-bottom));
-            left: 8px;
-            width: auto;
-            max-height: none;
-            border-radius: 12px;
-          }
-
-          .header { padding: 10px 12px; }
-          .header h2 { font-size: 14px; }
-
-          .settings {
-            padding: 10px;
-            gap: 8px;
-          }
-
-          input, textarea {
-            font-size: 16px;
-            min-height: 42px;
-          }
-
-          textarea { min-height: 65px; }
-
-          .action {
-            flex: 1 1 auto;
-            min-height: 42px;
-          }
-
-          .stats {
-            grid-template-columns: repeat(2,minmax(0,1fr));
-          }
-
-          #results { padding: 10px; }
-          .tab { padding: 11px 10px; }
-        }
-
-        @media (max-width: 360px) {
-          .settings {
-            grid-template-columns: minmax(0,1fr) 82px;
-          }
-
-          .header h2 { font-size: 12px; }
-        }
-      </style>
-
-      <button id="launcher">⚡ NEON AUDITOR</button>
-
-      <section id="panel" hidden>
-        <div class="header">
-          <div>
-            <h2>NEON WEBSITE AUDITOR</h2>
-            <small>V4.0 · CLOUDFLARE PROXY · MOBILE READY</small>
-          </div>
-          <button class="close" id="close">×</button>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080c09">
+  <title>Neon Website Auditor</title>
+  <style>
+    :root {
+      --bg: #080c09;
+      --panel: #101711;
+      --panel-2: #141d16;
+      --panel-3: #19251b;
+      --line: #26352a;
+      --text: #edf5ee;
+      --muted: #91a394;
+      --green: #a8ff35;
+      --green-2: #73d91c;
+      --red: #ff6474;
+      --yellow: #ffd166;
+      --blue: #73c7ff;
+      --radius: 16px;
+      --shadow: 0 18px 50px rgba(0,0,0,.24);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 15% 0%, rgba(168,255,53,.075), transparent 32%),
+        radial-gradient(ellipse at 100% 15%, rgba(75,180,110,.055), transparent 30%),
+        var(--bg);
+      color: var(--text);
+      font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 250px minmax(0,1fr);
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 24px 16px;
+      border-right: 1px solid var(--line);
+      background: rgba(8,12,9,.88);
+      backdrop-filter: blur(18px);
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      z-index: 10;
+    }
+    .brand { display:flex; align-items:center; gap:12px; padding: 0 8px; }
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 12px;
+      display:grid; place-items:center;
+      background: linear-gradient(145deg, #c5ff74, #78dc22);
+      color:#0a1108; font-weight:950; font-size:19px;
+      box-shadow: 0 0 28px rgba(168,255,53,.22);
+    }
+    .brand-name { font-weight:850; letter-spacing:.01em; font-size:15px; }
+    .brand-sub { color:var(--muted); font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
+    .nav-label { color:#66776a; font-size:10px; font-weight:800; letter-spacing:.15em; text-transform:uppercase; padding:0 12px 8px; }
+    .nav { display:grid; gap:5px; }
+    .nav button {
+      display:flex; align-items:center; gap:12px; width:100%;
+      padding:11px 12px; border:1px solid transparent; border-radius:11px;
+      background:transparent; color:#aebcaf; text-align:left; transition:.18s ease;
+    }
+    .nav button:hover { background:#111a13; color:var(--text); }
+    .nav button.active {
+      color:var(--green); background:rgba(168,255,53,.08);
+      border-color:rgba(168,255,53,.2);
+      box-shadow: inset 3px 0 0 var(--green);
+    }
+    .nav-icon { width:19px; text-align:center; font-size:16px; }
+    .sidebar-bottom { margin-top:auto; }
+    .connection-mini {
+      padding:13px; border:1px solid var(--line); border-radius:13px;
+      background:linear-gradient(145deg, rgba(168,255,53,.06), rgba(16,23,17,.8));
+    }
+    .connection-mini strong { display:block; font-size:12px; margin-bottom:4px; }
+    .connection-mini span { color:var(--muted); font-size:11px; display:block; }
+    .main { min-width:0; }
+    .topbar {
+      min-height:72px; padding:14px 32px; border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:18px;
+      background:rgba(8,12,9,.58); backdrop-filter:blur(16px);
+      position:sticky; top:0; z-index:8;
+    }
+    .crumb { color:var(--muted); font-size:12px; }
+    .crumb strong { color:var(--text); font-weight:700; }
+    .top-actions { display:flex; align-items:center; gap:10px; }
+    .status-pill {
+      display:inline-flex; align-items:center; gap:8px; padding:7px 11px;
+      border:1px solid var(--line); border-radius:999px; color:#b4c5b7;
+      background:#101711; font-size:11px;
+    }
+    .status-dot { width:7px; height:7px; border-radius:50%; background:#6b7a6d; }
+    .status-pill.connected .status-dot { background:var(--green); box-shadow:0 0 10px var(--green); }
+    .content { max-width:1500px; margin:0 auto; padding:30px 32px 60px; }
+    .view { display:none; animation:fadeIn .2s ease; }
+    .view.active { display:block; }
+    @keyframes fadeIn { from {opacity:.4; transform:translateY(4px)} to {opacity:1; transform:none} }
+    .page-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:24px; }
+    .eyebrow { color:var(--green); font-size:10px; font-weight:850; letter-spacing:.18em; text-transform:uppercase; margin-bottom:7px; }
+    h1 { margin:0; font-size:clamp(25px,3vw,34px); line-height:1.15; letter-spacing:-.04em; }
+    h2 { margin:0; font-size:17px; letter-spacing:-.02em; }
+    h3 { margin:0; font-size:14px; }
+    .subheading { color:var(--muted); margin:9px 0 0; max-width:760px; }
+    .muted { color:var(--muted); }
+    .small { font-size:11px; }
+    .grid { display:grid; gap:16px; }
+    .stats { grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:18px; }
+    .stat-card, .panel {
+      border:1px solid var(--line); border-radius:var(--radius);
+      background:linear-gradient(145deg, rgba(20,29,22,.96), rgba(13,19,14,.96));
+      box-shadow:var(--shadow);
+    }
+    .stat-card { padding:18px 19px; min-height:116px; }
+    .stat-top { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:11px; }
+    .stat-icon { width:29px; height:29px; border-radius:9px; display:grid; place-items:center; color:var(--green); background:rgba(168,255,53,.09); }
+    .stat-value { font-size:29px; line-height:1.1; font-weight:850; letter-spacing:-.05em; margin-top:12px; font-variant-numeric:tabular-nums; }
+    .stat-foot { color:#718275; font-size:10px; margin-top:4px; }
+    .panel { padding:20px; margin-bottom:17px; }
+    .panel-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:17px; }
+    .panel-head p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .connection-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .field { display:grid; gap:7px; min-width:0; }
+    .field.full { grid-column:1/-1; }
+    label { color:#b5c5b8; font-size:11px; font-weight:700; }
+    input, textarea, select {
+      width:100%; min-width:0; color:var(--text); background:#0a100c;
+      border:1px solid #2a3a2e; border-radius:10px; outline:none;
+      padding:11px 12px; transition:border .16s, box-shadow .16s;
+    }
+    input:focus, textarea:focus, select:focus { border-color:rgba(168,255,53,.65); box-shadow:0 0 0 3px rgba(168,255,53,.08); }
+    input::placeholder, textarea::placeholder { color:#59685d; }
+    textarea { min-height:145px; resize:vertical; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11px; line-height:1.55; }
+    .actions { display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-top:15px; }
+    .btn {
+      border:1px solid #344438; border-radius:10px; padding:10px 14px;
+      background:#17221a; color:#dce9de; font-weight:750; font-size:12px;
+      transition:transform .15s, border .15s, background .15s;
+    }
+    .btn:hover { border-color:#607766; background:#1d2c20; transform:translateY(-1px); }
+    .btn.primary { color:#10180b; background:var(--green); border-color:var(--green); }
+    .btn.primary:hover { background:#bdff69; }
+    .btn.ghost { background:transparent; }
+    .btn.danger { color:#ff9ba5; border-color:rgba(255,100,116,.28); background:rgba(255,100,116,.07); }
+    .btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+    .inline-note { color:var(--muted); font-size:11px; margin-top:10px; }
+    .two-col { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.8fr); gap:17px; align-items:start; }
+    .activity-list { display:grid; gap:12px; }
+    .activity-item { display:flex; gap:11px; align-items:flex-start; }
+    .activity-bullet { width:8px; height:8px; margin-top:5px; border-radius:50%; background:var(--green); box-shadow:0 0 10px rgba(168,255,53,.35); flex:none; }
+    .activity-item strong { display:block; font-size:12px; }
+    .activity-item span { display:block; color:var(--muted); font-size:11px; margin-top:2px; }
+    .table-wrap { width:100%; overflow:auto; border:1px solid var(--line); border-radius:12px; }
+    table { width:100%; border-collapse:collapse; min-width:760px; }
+    th, td { padding:11px 13px; text-align:left; border-bottom:1px solid rgba(38,53,42,.75); vertical-align:top; }
+    th { color:#8fa092; background:#101811; font-size:10px; letter-spacing:.09em; text-transform:uppercase; white-space:nowrap; position:sticky; top:0; }
+    td { color:#d6e2d8; font-size:11px; }
+    tr:last-child td { border-bottom:0; }
+    tbody tr:hover { background:rgba(168,255,53,.025); }
+    .url-cell { max-width:520px; overflow-wrap:anywhere; color:#c4f18d; }
+    .tag { display:inline-flex; align-items:center; padding:4px 7px; border-radius:6px; font-size:10px; font-weight:800; white-space:nowrap; }
+    .tag.good { color:#baff79; background:rgba(168,255,53,.1); }
+    .tag.warn { color:#ffd98a; background:rgba(255,209,102,.1); }
+    .tag.bad { color:#ff9ba5; background:rgba(255,100,116,.1); }
+    .tag.info { color:#9edcff; background:rgba(115,199,255,.1); }
+    .toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:9px; margin-bottom:13px; }
+    .toolbar input { max-width:310px; }
+    .toolbar select { width:auto; min-width:150px; }
+    .empty { padding:35px 18px; text-align:center; color:var(--muted); }
+    .empty strong { display:block; color:#dce8dd; font-size:13px; margin-bottom:5px; }
+    .rule-list { display:grid; gap:9px; }
+    .rule {
+      display:flex; align-items:flex-start; gap:10px; padding:11px 12px;
+      border:1px solid var(--line); border-radius:10px; background:#0d150f;
+    }
+    .rule-check { color:var(--green); font-weight:900; }
+    .rule code { color:#d3efb6; overflow-wrap:anywhere; font-size:11px; }
+    .cleanup-summary { padding:13px 14px; border-radius:11px; border:1px solid rgba(168,255,53,.18); background:rgba(168,255,53,.055); color:#cce8b5; font-size:12px; margin-bottom:14px; }
+    .cleanup-summary.warning { border-color:rgba(255,209,102,.25); background:rgba(255,209,102,.06); color:#f3d99e; }
+    .code-preview { min-height:210px; }
+    .progress-shell { height:7px; background:#202c22; border-radius:999px; overflow:hidden; margin-top:12px; }
+    .progress-bar { width:0; height:100%; background:linear-gradient(90deg,#7bdc20,#c5ff6a); transition:width .2s; }
+    .progress-label { display:flex; justify-content:space-between; color:var(--muted); font-size:10px; margin-top:6px; }
+    .result-issues { display:flex; flex-wrap:wrap; gap:5px; max-width:320px; }
+    .issue-chip { font-size:9px; color:#ffc0c6; background:rgba(255,100,116,.09); padding:3px 6px; border-radius:5px; }
+    .issue-chip.neutral { color:#c4d2c6; background:#1d2a20; }
+    .footer-note { color:#647467; font-size:10px; margin-top:20px; text-align:center; }
+    .toast {
+      position:fixed; right:22px; bottom:22px; z-index:50; max-width:min(420px,calc(100vw - 44px));
+      padding:13px 16px; border:1px solid #425b45; border-radius:12px;
+      background:#142018; color:#e7f3e8; box-shadow:0 18px 45px rgba(0,0,0,.4);
+      opacity:0; transform:translateY(12px); pointer-events:none; transition:.2s;
+      font-size:12px;
+    }
+    .toast.show { opacity:1; transform:none; }
+    .mobile-menu { display:none; }
+    @media (max-width:1100px) {
+      .stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .two-col { grid-template-columns:1fr; }
+    }
+    @media (max-width:760px) {
+      .app { grid-template-columns:1fr; }
+      .sidebar { position:relative; height:auto; padding:13px 15px; border-right:0; border-bottom:1px solid var(--line); gap:13px; }
+      .brand { padding:0; }
+      .sidebar nav { display:flex; overflow:auto; gap:5px; }
+      .nav-label, .sidebar-bottom { display:none; }
+      .nav button { width:auto; white-space:nowrap; padding:9px 11px; }
+      .nav-icon { display:none; }
+      .topbar { position:relative; padding:12px 17px; min-height:55px; }
+      .content { padding:22px 16px 42px; }
+      .connection-grid { grid-template-columns:1fr; }
+      .field.full { grid-column:auto; }
+      .page-heading { display:block; }
+      .page-heading .actions { margin-top:14px; }
+      .stats { gap:10px; }
+      .stat-card { padding:14px; min-height:100px; }
+      .stat-value { font-size:25px; }
+      .panel { padding:15px; }
+      .top-actions .status-pill { display:none; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <div><div class="brand-name">NEON AUDITOR</div><div class="brand-sub">Website intelligence</div></div>
+    </div>
+    <div>
+      <div class="nav-label">Workspace</div>
+      <nav class="nav">
+        <button class="active" data-view="dashboard"><span class="nav-icon">⌂</span>Dashboard</button>
+        <button data-view="sitemap"><span class="nav-icon">▤</span>Sitemap Scanner</button>
+        <button data-view="audit"><span class="nav-icon">⌕</span>Page Auditor</button>
+        <button data-view="cleanup"><span class="nav-icon">✦</span>Sitemap Cleanup</button>
+        <button data-view="findreplace"><span class="nav-icon">⇄</span>Find &amp; Replace</button>
+        <button data-view="history"><span class="nav-icon">◷</span>Scan History</button>
+      </nav>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="connection-mini">
+        <strong>Proxy connection</strong>
+        <span id="sidebarProxyStatus">Worker URL not tested</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb">Workspace <span class="muted">/</span> <strong id="currentSection">Dashboard</strong></div>
+      <div class="top-actions">
+        <div class="status-pill" id="connectionStatus"><span class="status-dot"></span><span id="connectionStatusText">Not connected</span></div>
+        <button class="btn ghost" id="saveSettingsBtn">Save settings</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="view active" id="view-dashboard">
+        <div class="page-heading">
+          <div><div class="eyebrow">SEO + technical QA workspace</div><h1>Website audit workspace</h1><p class="subheading">Scan a sitemap, inspect page-level SEO signals, and prepare safe sitemap cleanup exports from one place.</p></div>
+          <div class="actions"><button class="btn primary" id="quickScanBtn">▶ Run website audit</button></div>
         </div>
 
-        <div class="settings">
-          <div class="field">
-            <label>SITEMAP URL</label>
-            <input id="sitemap" type="url"
-              placeholder="https://example.com/sitemap.xml">
-          </div>
+        <div class="grid stats">
+          <div class="stat-card"><div class="stat-top"><span>Sitemap URLs</span><span class="stat-icon">▤</span></div><div class="stat-value" id="statUrls">0</div><div class="stat-foot">Imported URL entries</div></div>
+          <div class="stat-card"><div class="stat-top"><span>Pages scanned</span><span class="stat-icon">⌕</span></div><div class="stat-value" id="statScanned">0</div><div class="stat-foot">Completed page requests</div></div>
+          <div class="stat-card"><div class="stat-top"><span>SEO issues</span><span class="stat-icon">⚑</span></div><div class="stat-value" id="statIssues">0</div><div class="stat-foot">Detected across scanned pages</div></div>
+          <div class="stat-card"><div class="stat-top"><span>Cleanup matches</span><span class="stat-icon">✦</span></div><div class="stat-value" id="statCleanup">0</div><div class="stat-foot">Obsolete URL variants found</div></div>
+        </div>
 
-          <div class="field">
-            <label>MAX PAGES</label>
-            <input id="maxPages" type="number"
-              min="1" max="50000" value="1000">
+        <div class="panel">
+          <div class="panel-head"><div><h2>Website connection</h2><p>Connect the app to your Cloudflare Worker and target sitemap.</p></div><span class="tag info">Setup</span></div>
+          <div class="connection-grid">
+            <div class="field full"><label for="workerUrl">Cloudflare Worker URL</label><input id="workerUrl" placeholder="https://your-worker.workers.dev"></div>
+            <div class="field"><label for="siteUrl">Target website</label><input id="siteUrl" value="https://trustedlasiksurgeons.com" placeholder="https://example.com"></div>
+            <div class="field"><label for="sitemapUrl">Sitemap URL</label><input id="sitemapUrl" value="https://trustedlasiksurgeons.com/sitemap.xml" placeholder="https://example.com/sitemap.xml"></div>
           </div>
-
-          <div class="field full">
-            <label>CLOUDFLARE WORKER URL</label>
-            <input id="proxyUrl" type="url"
-              placeholder="https://your-worker.workers.dev">
-          </div>
-
-          <div class="field full">
-            <label>KEYWORDS · COMMA OR NEW LINE SEPARATED</label>
-            <textarea id="keywords"
-              placeholder="keyword one&#10;keyword two"></textarea>
-          </div>
-
-          <div class="field">
-            <label>FIND TEXT</label>
-            <input id="findText" type="text" placeholder="Text to find">
-          </div>
-
-          <div class="field">
-            <label>REPLACE WITH</label>
-            <input id="replaceText" type="text" placeholder="Replacement">
-          </div>
-
           <div class="actions">
-            <button class="action primary" id="start">▶ START AUDIT</button>
-            <button class="action danger" id="stop" disabled>■ STOP</button>
-            <button class="action" id="export" disabled>↓ CSV</button>
-            <button class="action" id="clear">CLEAR</button>
+            <button class="btn primary" id="loadSitemapBtn">Load sitemap</button>
+            <button class="btn" id="scanSiteBtn">Load + audit pages</button>
+            <button class="btn ghost" id="testWorkerBtn">Test Worker</button>
           </div>
+          <div class="progress-shell" id="progressShell" hidden><div class="progress-bar" id="progressBar"></div></div>
+          <div class="progress-label" id="progressLabel" hidden><span id="progressText">Waiting…</span><span id="progressPercent">0%</span></div>
+          <p class="inline-note">The Worker is a controlled fetch proxy. It only fetches domains listed in its allowlist; website bot challenges are reported, not bypassed.</p>
         </div>
 
-        <div class="status" id="status">
-          Ready. Enter a sitemap and Worker URL.
-        </div>
-
-        <div class="progress-area">
-          <div class="progress-track">
-            <div id="progressFill"></div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-head"><div><h2>Recent activity</h2><p>Latest actions in this browser.</p></div></div>
+            <div class="activity-list" id="activityList"><div class="empty"><strong>No activity yet</strong>Load a sitemap to get started.</div></div>
           </div>
-          <div id="progressText">Waiting for audit...</div>
-        </div>
-
-        <div class="tabs">
-          <button class="tab active" data-tab="overview">OVERVIEW</button>
-          <button class="tab" data-tab="keywords">KEYWORDS</button>
-          <button class="tab" data-tab="seo">SEO</button>
-          <button class="tab" data-tab="links">LINKS</button>
-          <button class="tab" data-tab="duplicates">DUPLICATES</button>
-          <button class="tab" data-tab="replace">REPLACE</button>
-          <button class="tab" data-tab="history">HISTORY</button>
-        </div>
-
-        <div id="results">
-          <div class="empty">Your audit results will appear here.</div>
+          <div class="panel">
+            <div class="panel-head"><div><h2>Quick workflow</h2><p>Recommended sequence for a site maintenance task.</p></div></div>
+            <div class="activity-list">
+              <div class="activity-item"><span class="activity-bullet"></span><div><strong>1. Import the sitemap</strong><span>Use the sitemap URL, paste XML, or upload an XML file.</span></div></div>
+              <div class="activity-item"><span class="activity-bullet"></span><div><strong>2. Review page health</strong><span>Scan titles, descriptions, headings, images, links, and content length.</span></div></div>
+              <div class="activity-item"><span class="activity-bullet"></span><div><strong>3. Preview cleanup</strong><span>Check exact obsolete URL matches before exporting a cleaned sitemap.</span></div></div>
+              <div class="activity-item"><span class="activity-bullet"></span><div><strong>4. Publish through the CMS</strong><span>Upload the validated XML or update the CMS-generated sitemap settings.</span></div></div>
+            </div>
+          </div>
         </div>
       </section>
-    `;
 
-    const $ = selector => shadow.querySelector(selector);
+      <section class="view" id="view-sitemap">
+        <div class="page-heading"><div><div class="eyebrow">Discovery</div><h1>Sitemap scanner</h1><p class="subheading">Import a sitemap from the Worker, paste XML, or upload an XML file. URL entries are listed below.</p></div><div class="actions"><button class="btn" id="exportSitemapCsvBtn">Export URL CSV</button></div></div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Import sitemap XML</h2><p>Use one source at a time. Sitemap index files may reference child sitemaps.</p></div></div>
+          <div class="field"><label for="pastedXml">Paste sitemap XML</label><textarea id="pastedXml" placeholder="Paste the complete <?xml ...?> or <urlset>...</urlset> content here."></textarea></div>
+          <div class="actions">
+            <button class="btn primary" id="importPastedXmlBtn">Import pasted XML</button>
+            <button class="btn" id="uploadXmlBtn">Upload XML file</button>
+            <input type="file" id="xmlFileInput" accept=".xml,text/xml,application/xml" hidden>
+            <button class="btn ghost" id="reloadSitemapBtn">Load from sitemap URL</button>
+          </div>
+          <p class="inline-note">If the Worker is blocked by the site's security service, paste or upload the XML you can access in your browser. Page-by-page auditing still requires Worker access to those pages.</p>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Discovered URLs</h2><p id="sitemapMeta">No sitemap imported.</p></div></div>
+          <div class="toolbar"><input id="sitemapSearch" placeholder="Filter URLs…"><span class="muted small" id="sitemapVisibleCount">0 entries</span></div>
+          <div class="table-wrap"><table><thead><tr><th>#</th><th>URL</th><th>Last modified</th><th>Source</th></tr></thead><tbody id="sitemapTableBody"><tr><td colspan="4"><div class="empty"><strong>No sitemap loaded</strong>Import an XML sitemap to see its entries.</div></td></tr></tbody></table></div>
+        </div>
+      </section>
 
-    const state = {
-      scanning: false,
-      stop: false,
-      tab: "overview",
-      sitemapUrl: "",
-      maxPages: 1000,
-      keywords: [],
-      findText: "",
-      replaceText: "",
-      pageSet: new Set(),
-      pageResults: [],
-      linkCandidateMap: new Map(),
-      linkResults: [],
-      paragraphMap: new Map(),
-      duplicateParagraphs: [],
-      duplicateTitles: [],
-      duplicateDescriptions: [],
-      replacePreview: [],
-      keywordTotals: [],
-      sitemapFiles: [],
-      errors: [],
-      discoveredCount: 0,
-      linkLimitReached: false
+      <section class="view" id="view-audit">
+        <div class="page-heading"><div><div class="eyebrow">On-page inspection</div><h1>Page auditor</h1><p class="subheading">Review technical and on-page SEO signals for each URL discovered in the sitemap.</p></div><div class="actions"><button class="btn" id="exportAuditBtn">Export audit CSV</button><button class="btn primary" id="rerunAuditBtn">Run / rerun audit</button></div></div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Page audit results</h2><p id="auditMeta">No pages scanned yet.</p></div></div>
+          <div class="toolbar"><input id="auditSearch" placeholder="Filter by URL or title…"><select id="auditFilter"><option value="all">All pages</option><option value="issues">Pages with issues</option><option value="blocked">Blocked / errors</option><option value="healthy">No detected issues</option></select></div>
+          <div class="table-wrap"><table><thead><tr><th>Page</th><th>HTTP</th><th>Title</th><th>Description</th><th>H1</th><th>Words</th><th>Images missing ALT</th><th>Issues</th></tr></thead><tbody id="auditTableBody"><tr><td colspan="8"><div class="empty"><strong>No audit results</strong>Load a sitemap, then run the page audit.</div></td></tr></tbody></table></div>
+        </div>
+        <p class="footer-note">SEO flags are heuristic checks for review, not a substitute for search-engine validation or a full crawl.</p>
+      </section>
+
+      <section class="view" id="view-cleanup">
+        <div class="page-heading"><div><div class="eyebrow">Sitemap maintenance</div><h1>Sitemap cleanup</h1><p class="subheading">Find the obsolete legacy URLs, inspect trailing-slash and case variations, then generate a validated XML export.</p></div><div class="actions"><button class="btn primary" id="previewCleanupBtn">Preview cleanup</button><button class="btn" id="downloadCleanedBtn" disabled>Download cleaned XML</button></div></div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Target URL rules</h2><p>These exact path rules are preloaded for the requested cleanup. Matching is restricted to the target website host.</p></div><span class="tag warn">Review before export</span></div>
+          <div class="field"><label for="cleanupTargetHost">Target website / hostname</label><input id="cleanupTargetHost" value="https://trustedlasiksurgeons.com"></div>
+          <div class="rule-list" style="margin-top:14px">
+            <div class="rule"><span class="rule-check">✓</span><div><code>/eye-surgery-procedures/kamra----inlay-surgery.html/old</code><div class="muted small">Also matches a trailing slash and equivalent URL encoding.</div></div></div>
+            <div class="rule"><span class="rule-check">✓</span><div><code>/lasik--cataract---vision-correction-procedures/wall-street-journal-article-on-the-kamra-inlay.html/old</code><div class="muted small">Also matches a trailing slash and equivalent URL encoding.</div></div></div>
+            <div class="rule"><span class="rule-check">✓</span><div><code>/lasik-surgery-risk-factors/old</code><div class="muted small">Also matches a trailing slash and equivalent URL encoding.</div></div></div>
+          </div>
+          <p class="inline-note">The cleanup does not remove the original non-<code>/old</code> pages, unrelated URLs containing the word “old,” or URLs on a different host.</p>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Cleanup results</h2><p id="cleanupMeta">Import the target sitemap, then preview cleanup.</p></div><button class="btn" id="exportCleanupCsvBtn">Export cleanup report</button></div>
+          <div id="cleanupSummary" class="cleanup-summary">No cleanup preview has been generated yet.</div>
+          <div class="table-wrap"><table><thead><tr><th>Found URL</th><th>Matched rule</th><th>Action</th></tr></thead><tbody id="cleanupTableBody"><tr><td colspan="3"><div class="empty"><strong>No matches displayed</strong>Run Preview cleanup after importing the sitemap.</div></td></tr></tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Cleaned XML preview</h2><p>Generated locally in your browser. The original sitemap is not changed.</p></div></div>
+          <textarea id="cleanedXmlPreview" class="code-preview" readonly placeholder="The cleaned sitemap XML will appear here after preview."></textarea>
+          <div class="actions"><button class="btn primary" id="downloadCleanedXmlBtn" disabled>Download cleaned XML</button><button class="btn" id="copyCleanedXmlBtn" disabled>Copy XML</button></div>
+          <p class="inline-note">After downloading, upload the file to your hosting environment or use the CMS's sitemap controls. If the CMS generates the sitemap automatically, remove or disable the obsolete page records there instead.</p>
+        </div>
+      </section>
+
+      <section class="view" id="view-findreplace">
+        <div class="page-heading"><div><div class="eyebrow">Content review</div><h1>Content analysis</h1><p class="subheading">Analyze keyword usage and search for text across the pages scanned during the current audit.</p></div></div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Keyword analysis</h2><p>Count keyword or phrase occurrences and estimate density on each scanned page.</p></div></div>
+          <div class="toolbar"><input id="keywordInput" placeholder="Enter keyword or phrase"><button class="btn primary" id="analyzeKeywordBtn">Analyze keyword</button></div>
+          <p class="inline-note" id="keywordMeta">Run a page audit first. Keyword analysis uses the text extracted during the current scan.</p>
+          <div class="table-wrap"><table><thead><tr><th>Page URL</th><th>Occurrences</th><th>Word count</th><th>Approx. density</th></tr></thead><tbody id="keywordResultsBody"><tr><td colspan="4"><div class="empty"><strong>No keyword analysis</strong>Enter a keyword and analyze the scanned pages.</div></td></tr></tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Find &amp; replace analysis</h2><p>This is a read-only analysis. It does not edit or publish website content.</p></div></div>
+          <div class="connection-grid">
+            <div class="field"><label for="findText">Find text</label><input id="findText" placeholder="Text or phrase to find"></div>
+            <div class="field"><label for="replaceText">Replacement preview</label><input id="replaceText" placeholder="Proposed replacement (optional)"></div>
+          </div>
+          <div class="actions"><button class="btn primary" id="analyzeFindBtn">Analyze occurrences</button></div>
+          <p class="inline-note" id="replaceNote">Run a page audit first. Results are based on text extracted during the current scan.</p>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Occurrences by page</h2><p id="findMeta">No search performed.</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Page URL</th><th>Occurrences</th><th>Replacement preview</th></tr></thead><tbody id="findResultsBody"><tr><td colspan="3"><div class="empty"><strong>No search results</strong>Enter a phrase and analyze the scanned pages.</div></td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-history">
+        <div class="page-heading"><div><div class="eyebrow">Local browser records</div><h1>Scan history</h1><p class="subheading">Recent audit summaries saved in this browser only.</p></div><div class="actions"><button class="btn danger" id="clearHistoryBtn">Clear history</button></div></div>
+        <div class="panel">
+          <div class="panel-head"><div><h2>Previous runs</h2><p>History does not contain full page HTML.</p></div></div>
+          <div id="historyList"><div class="empty"><strong>No saved runs</strong>Complete a website audit to create a history entry.</div></div>
+        </div>
+      </section>
+      <div class="footer-note">NEON WEBSITE AUDITOR · Standalone browser application · Sitemap exports are generated locally</div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const STORAGE_KEY = "neonWebsiteAuditorStandaloneV1";
+  const DEFAULT_WORKER = "https://neon-auditor-proxy.emmansuarez6.workers.dev";
+  const OBSOLETE_RULES = [
+    { label: "/eye-surgery-procedures/kamra----inlay-surgery.html/old", path: "/eye-surgery-procedures/kamra----inlay-surgery.html/old" },
+    { label: "/lasik--cataract---vision-correction-procedures/wall-street-journal-article-on-the-kamra-inlay.html/old", path: "/lasik--cataract---vision-correction-procedures/wall-street-journal-article-on-the-kamra-inlay.html/old" },
+    { label: "/lasik-surgery-risk-factors/old", path: "/lasik-surgery-risk-factors/old" }
+  ];
+
+  const state = {
+    sitemapDocuments: [],
+    sitemapEntries: [],
+    auditResults: [],
+    cleanupMatches: [],
+    cleanedXml: "",
+    cleanupReport: [],
+    history: [],
+    activity: [],
+    isScanning: false
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  }[ch]));
+
+  function toast(message, duration = 3600) {
+    const el = $("toast");
+    el.textContent = message;
+    el.classList.add("show");
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => el.classList.remove("show"), duration);
+  }
+
+  function addActivity(title, detail) {
+    state.activity.unshift({ title, detail, at: new Date().toLocaleString() });
+    state.activity = state.activity.slice(0, 8);
+    renderActivity();
+  }
+
+  function renderActivity() {
+    const el = $("activityList");
+    if (!state.activity.length) {
+      el.innerHTML = '<div class="empty"><strong>No activity yet</strong>Load a sitemap to get started.</div>';
+      return;
+    }
+    el.innerHTML = state.activity.map(item => `
+      <div class="activity-item"><span class="activity-bullet"></span><div>
+        <strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)} · ${escapeHtml(item.at)}</span>
+      </div></div>`).join("");
+  }
+
+  function saveSettings() {
+    const payload = {
+      workerUrl: $("workerUrl").value.trim(),
+      siteUrl: $("siteUrl").value.trim(),
+      sitemapUrl: $("sitemapUrl").value.trim(),
+      cleanupTargetHost: $("cleanupTargetHost").value.trim(),
+      history: state.history.slice(0, 20)
     };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    $("sidebarProxyStatus").textContent = payload.workerUrl ? "Worker URL saved" : "Worker URL not set";
+    toast("Settings saved in this browser.");
+  }
 
-    // ==========================================
-    // PART 2: UTILITY FUNCTIONS + FETCHING
-    // ==========================================
-
-    function escapeHTML(value) {
-        return String(value ?? "").replace(/[&<>"']/g, char => ({
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#39;"
-        })[char]);
+  function loadSettings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      $("workerUrl").value = saved.workerUrl || DEFAULT_WORKER;
+      $("siteUrl").value = saved.siteUrl || "https://trustedlasiksurgeons.com";
+      $("sitemapUrl").value = saved.sitemapUrl || "https://trustedlasiksurgeons.com/sitemap.xml";
+      $("cleanupTargetHost").value = saved.cleanupTargetHost || "https://trustedlasiksurgeons.com";
+      state.history = Array.isArray(saved.history) ? saved.history : [];
+    } catch {
+      $("workerUrl").value = DEFAULT_WORKER;
     }
+    $("sidebarProxyStatus").textContent = $("workerUrl").value.trim() ? "Worker URL configured" : "Worker URL not set";
+    renderHistory();
+  }
 
-    function storageGet(key, fallback = null) {
-        try {
-            const value = localStorage.getItem(key);
-            return value === null ? fallback : JSON.parse(value);
-        } catch (error) {
-            return fallback;
+  function setConnectionStatus(connected, message) {
+    const el = $("connectionStatus");
+    el.classList.toggle("connected", !!connected);
+    $("connectionStatusText").textContent = message || (connected ? "Worker ready" : "Not connected");
+    $("sidebarProxyStatus").textContent = message || (connected ? "Worker reachable" : "Worker not tested");
+  }
+
+  function showProgress(show, text = "Working…", percent = 0) {
+    $("progressShell").hidden = !show;
+    $("progressLabel").hidden = !show;
+    $("progressText").textContent = text;
+    $("progressPercent").textContent = `${Math.max(0, Math.min(100, Math.round(percent)))}%`;
+    $("progressBar").style.width = `${Math.max(0, Math.min(100, percent))}%`;
+  }
+
+  function navigate(viewName) {
+    document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === `view-${viewName}`));
+    document.querySelectorAll(".nav button").forEach(b => b.classList.toggle("active", b.dataset.view === viewName));
+    const active = document.querySelector(`.nav button[data-view="${viewName}"]`);
+    $("currentSection").textContent = active ? active.textContent.trim() : "Dashboard";
+  }
+
+  function normalizeHost(value) {
+    try { return new URL(value.includes("://") ? value : `https://${value}`).hostname.toLowerCase().replace(/^www\./, ""); }
+    catch { return ""; }
+  }
+
+  function normalizePath(pathname) {
+    let path = String(pathname || "/");
+    try { path = decodeURIComponent(path); } catch {}
+    path = path.replace(/\/{2,}/g, "/");
+    if (path.length > 1) path = path.replace(/\/+$/, "");
+    return path.toLowerCase() || "/";
+  }
+
+  function getMatchingRule(urlValue, targetHost) {
+    let parsed;
+    try { parsed = new URL(urlValue); } catch { return null; }
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (targetHost && host !== targetHost) return null;
+    const path = normalizePath(parsed.pathname);
+    return OBSOLETE_RULES.find(rule => normalizePath(rule.path) === path) || null;
+  }
+
+  function validateHttpUrl(value, label = "URL") {
+    let url;
+    try { url = new URL(value); } catch { throw new Error(`${label} is not a valid URL.`); }
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error(`${label} must use HTTP or HTTPS.`);
+    if (url.username || url.password) throw new Error(`${label} must not contain credentials.`);
+    return url;
+  }
+
+  async function fetchViaWorker(targetUrl) {
+    const workerValue = $("workerUrl").value.trim();
+    if (!workerValue) throw new Error("Enter your Cloudflare Worker URL first.");
+    const worker = validateHttpUrl(workerValue, "Worker URL");
+    const target = validateHttpUrl(targetUrl, "Target URL");
+    if (worker.protocol !== "https:") throw new Error("The Worker URL must use HTTPS.");
+    worker.searchParams.set("url", target.href);
+    let response;
+    try {
+      response = await fetch(worker.href, { method: "GET", headers: { "Accept": "text/html,application/xhtml+xml,application/xml,text/xml,*/*" } });
+    } catch (error) {
+      throw new Error(`Could not reach the Worker. Check its CORS origin allowlist and URL. (${error.message})`);
+    }
+    const text = await response.text();
+    const challenge = isSecurityChallenge(text);
+    if (!response.ok && !challenge) {
+      const excerpt = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
+      throw new Error(`Worker / website returned HTTP ${response.status}${excerpt ? `: ${excerpt}` : ""}`);
+    }
+    return { text, status: response.status, contentType: response.headers.get("content-type") || "", challenge };
+  }
+
+  function isSecurityChallenge(text) {
+    return /performing security verification|verify you are human|checking your browser|captcha|attention required|security verification|cloudflare.*challenge/i.test(String(text || "").slice(0, 30000));
+  }
+
+  function parseXml(xml) {
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+    if (doc.querySelector("parsererror")) throw new Error("The XML is invalid or incomplete. Check that the complete sitemap was pasted or uploaded.");
+    const root = doc.documentElement;
+    if (!root) throw new Error("The XML file has no root element.");
+    const kind = root.localName.toLowerCase();
+    if (kind !== "urlset" && kind !== "sitemapindex") throw new Error(`Unsupported XML root <${root.nodeName}>. Expected <urlset> or <sitemapindex>.`);
+    return { doc, kind };
+  }
+
+  function extractUrlEntries(doc) {
+    const root = doc.documentElement;
+    return Array.from(root.children)
+      .filter(node => node.localName.toLowerCase() === "url")
+      .map(node => {
+        const loc = Array.from(node.children).find(child => child.localName.toLowerCase() === "loc");
+        const lastmod = Array.from(node.children).find(child => child.localName.toLowerCase() === "lastmod");
+        return { loc: loc ? loc.textContent.trim() : "", lastmod: lastmod ? lastmod.textContent.trim() : "" };
+      })
+      .filter(entry => entry.loc);
+  }
+
+  function extractChildSitemaps(doc) {
+    return Array.from(doc.documentElement.children)
+      .filter(node => node.localName.toLowerCase() === "sitemap")
+      .map(node => {
+        const loc = Array.from(node.children).find(child => child.localName.toLowerCase() === "loc");
+        return loc ? loc.textContent.trim() : "";
+      }).filter(Boolean);
+  }
+
+  async function loadSitemapFromUrl() {
+    const sitemapUrl = $("sitemapUrl").value.trim();
+    if (!sitemapUrl) throw new Error("Enter a sitemap URL.");
+    validateHttpUrl(sitemapUrl, "Sitemap URL");
+    state.sitemapDocuments = [];
+    state.sitemapEntries = [];
+    const visited = new Set();
+    let totalFetched = 0;
+
+    async function loadOne(url, depth = 0) {
+      if (visited.has(url)) return;
+      if (depth > 2) throw new Error("Sitemap index nesting is deeper than the supported limit (2).");
+      visited.add(url);
+      totalFetched++;
+      if (totalFetched > 30) throw new Error("This sitemap index references more than 30 files. Import the required child sitemap separately.");
+      showProgress(true, `Fetching sitemap ${totalFetched}…`, 10);
+      const result = await fetchViaWorker(url);
+      if (result.challenge) throw new Error(`The website security service returned a bot-verification page for ${url}. Try pasting or uploading the XML instead, or ask the site administrator to authorize the Worker.`);
+      if (!result.text.trim()) throw new Error(`The sitemap response from ${url} was empty.`);
+      const parsed = parseXml(result.text);
+      if (parsed.kind === "urlset") {
+        const docIndex = state.sitemapDocuments.length;
+        const entries = extractUrlEntries(parsed.doc);
+        state.sitemapDocuments.push({ sourceUrl: url, xml: result.text, kind: "urlset", entries });
+        entries.forEach(entry => state.sitemapEntries.push({ ...entry, sourceUrl: url, docIndex }));
+      } else {
+        const children = extractChildSitemaps(parsed.doc);
+        if (!children.length) throw new Error(`The sitemap index at ${url} does not contain child sitemap URLs.`);
+        for (let i = 0; i < children.length; i++) {
+          await loadOne(children[i], depth + 1);
+          showProgress(true, `Loaded ${i + 1} of ${children.length} child sitemaps…`, 10 + ((i + 1) / children.length) * 80);
         }
+      }
     }
 
-    function storageSet(key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (error) {
-            console.warn("Could not save auditor setting:", error);
-        }
+    await loadOne(sitemapUrl);
+    if (!state.sitemapEntries.length) throw new Error("The sitemap was valid XML, but no <url><loc> entries were found.");
+    $("sitemapMeta").textContent = `${state.sitemapEntries.length} URL entries · ${state.sitemapDocuments.length} sitemap file(s) · loaded ${new Date().toLocaleString()}`;
+    renderSitemap();
+    renderDashboard();
+    setConnectionStatus(true, "Sitemap loaded");
+    addActivity("Sitemap imported", `${state.sitemapEntries.length} URLs discovered`);
+    showProgress(false);
+    return state.sitemapEntries.length;
+  }
+
+  async function importXmlText(xml, sourceName = "Pasted XML") {
+    const parsed = parseXml(xml);
+    if (parsed.kind === "sitemapindex") {
+      const children = extractChildSitemaps(parsed.doc);
+      if (!children.length) throw new Error("The sitemap index has no child sitemap URLs.");
+      state.sitemapDocuments = [];
+      state.sitemapEntries = [];
+      const originalSitemapUrl = $("sitemapUrl").value.trim();
+      for (let i = 0; i < children.length; i++) {
+        const child = await fetchViaWorker(children[i]);
+        if (child.challenge) throw new Error(`A child sitemap is blocked by the site's security service: ${children[i]}`);
+        const childParsed = parseXml(child.text);
+        if (childParsed.kind !== "urlset") throw new Error("Nested sitemap indexes are not supported in pasted-index mode. Import a child URL-set XML instead.");
+        const entries = extractUrlEntries(childParsed.doc);
+        const docIndex = state.sitemapDocuments.length;
+        state.sitemapDocuments.push({ sourceUrl: children[i], xml: child.text, kind: "urlset", entries });
+        entries.forEach(entry => state.sitemapEntries.push({ ...entry, sourceUrl: children[i], docIndex }));
+      }
+      if (!state.sitemapEntries.length) throw new Error("No URL entries were found in the child sitemaps.");
+      $("sitemapUrl").value = originalSitemapUrl || children[0];
+    } else {
+      const entries = extractUrlEntries(parsed.doc);
+      if (!entries.length) throw new Error("No <url><loc> entries were found in this XML.");
+      state.sitemapDocuments = [{ sourceUrl: sourceName, xml, kind: "urlset", entries }];
+      state.sitemapEntries = entries.map(entry => ({ ...entry, sourceUrl: sourceName, docIndex: 0 }));
     }
+    $("sitemapMeta").textContent = `${state.sitemapEntries.length} URL entries · ${state.sitemapDocuments.length} sitemap file(s) · imported ${new Date().toLocaleString()}`;
+    renderSitemap();
+    renderDashboard();
+    addActivity("Sitemap imported", `${state.sitemapEntries.length} URLs from ${sourceName}`);
+    toast(`Imported ${state.sitemapEntries.length} sitemap URLs.`);
+  }
 
-    function defaultSitemap() {
-        const current = $("#sitemap")?.value?.trim();
+  function renderSitemap() {
+    const query = $("sitemapSearch").value.trim().toLowerCase();
+    const rows = state.sitemapEntries.filter(e => `${e.loc} ${e.lastmod}`.toLowerCase().includes(query));
+    $("sitemapVisibleCount").textContent = `${rows.length} of ${state.sitemapEntries.length} entries`;
+    $("sitemapTableBody").innerHTML = rows.length ? rows.map((entry, index) => `
+      <tr><td>${index + 1}</td><td class="url-cell">${escapeHtml(entry.loc)}</td><td>${escapeHtml(entry.lastmod || "—")}</td><td>${escapeHtml(entry.sourceUrl)}</td></tr>`).join("") :
+      `<tr><td colspan="4"><div class="empty"><strong>No matching URLs</strong>Try a different filter.</div></td></tr>`;
+  }
 
-        if (current) {
-            return current;
-        }
+  function countIssues(result) {
+    return Array.isArray(result.issues) ? result.issues.length : 0;
+  }
 
-        return new URL("/sitemap.xml", window.location.href).href;
+  function renderDashboard() {
+    $("statUrls").textContent = state.sitemapEntries.length.toLocaleString();
+    $("statScanned").textContent = state.auditResults.length.toLocaleString();
+    $("statIssues").textContent = state.auditResults.reduce((sum, item) => sum + countIssues(item), 0).toLocaleString();
+    $("statCleanup").textContent = state.cleanupMatches.length.toLocaleString();
+  }
+
+  function getPageAudit(url, html, status) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const title = (doc.querySelector("title")?.textContent || "").trim();
+    const description = (doc.querySelector('meta[name="description" i]')?.getAttribute("content") || "").trim();
+    const canonical = (doc.querySelector('link[rel~="canonical" i]')?.getAttribute("href") || "").trim();
+    const robots = (doc.querySelector('meta[name="robots" i]')?.getAttribute("content") || "").trim();
+    const h1s = Array.from(doc.querySelectorAll("h1")).map(el => (el.textContent || "").trim()).filter(Boolean);
+    const h2Count = doc.querySelectorAll("h2").length;
+    const images = Array.from(doc.querySelectorAll("img"));
+    const missingAlt = images.filter(img => !img.hasAttribute("alt") || !img.getAttribute("alt").trim()).length;
+    const bodyText = (doc.body?.innerText || doc.body?.textContent || "").replace(/\s+/g, " ").trim();
+    const words = bodyText ? bodyText.split(/\s+/).filter(Boolean).length : 0;
+    let internalLinks = 0;
+    let externalLinks = 0;
+    for (const anchor of doc.querySelectorAll("a[href]")) {
+      try {
+        const link = new URL(anchor.getAttribute("href"), url);
+        if (!["http:", "https:"].includes(link.protocol)) continue;
+        if (link.hostname.toLowerCase().replace(/^www\./, "") === new URL(url).hostname.toLowerCase().replace(/^www\./, "")) internalLinks++;
+        else externalLinks++;
+      } catch {}
     }
+    const issues = [];
+    if (!title) issues.push("Missing title");
+    else if (title.length > 60) issues.push("Long title");
+    if (!description) issues.push("Missing meta description");
+    else if (description.length > 160) issues.push("Long description");
+    if (h1s.length === 0) issues.push("Missing H1");
+    if (h1s.length > 1) issues.push("Multiple H1s");
+    if (!canonical) issues.push("Missing canonical");
+    if (missingAlt) issues.push(`${missingAlt} image(s) missing ALT`);
+    if (words > 0 && words < 300) issues.push("Short content");
+    if (/\bnoindex\b/i.test(robots)) issues.push("Noindex directive");
+    return { url, status, title, description, canonical, robots, h1: h1s[0] || "", h1Count: h1s.length, h2Count, words, images: images.length, missingAlt, internalLinks, externalLinks, issues, bodyText, blocked: false };
+  }
 
-    function setStatus(message, type = "info") {
-        const status = $("#status");
-
-        if (!status) return;
-
-        status.textContent = message;
-        status.dataset.type = type;
+  async function scanOnePage(url) {
+    try {
+      const result = await fetchViaWorker(url);
+      if (result.challenge) return { url, status: result.status || 403, title: "", description: "", h1: "", words: 0, images: 0, missingAlt: 0, internalLinks: 0, externalLinks: 0, issues: ["Blocked by security challenge"], bodyText: "", blocked: true };
+      if (!result.text || !/<html|<head|<body/i.test(result.text.slice(0, 5000))) {
+        return { url, status: result.status, title: "", description: "", h1: "", words: 0, images: 0, missingAlt: 0, internalLinks: 0, externalLinks: 0, issues: ["Response is not HTML"], bodyText: "", blocked: false };
+      }
+      const page = getPageAudit(url, result.text, result.status);
+      if (result.status >= 400) page.issues.unshift(`HTTP ${result.status}`);
+      return page;
+    } catch (error) {
+      return { url, status: "ERR", title: "", description: "", h1: "", words: 0, images: 0, missingAlt: 0, internalLinks: 0, externalLinks: 0, issues: [error.message], bodyText: "", blocked: /security|challenge|blocked/i.test(error.message) };
     }
+  }
 
-    function setProgress(current, total, label = "") {
-        const fill = $("#progressFill");
-        const text = $("#progressText");
-
-        const safeTotal = Math.max(1, Number(total) || 1);
-        const safeCurrent = Math.max(0, Number(current) || 0);
-        const percentage = Math.min(
-            100,
-            Math.round((safeCurrent / safeTotal) * 100)
-        );
-
-        if (fill) {
-            fill.style.width = percentage + "%";
-        }
-
-        if (text) {
-            text.textContent = label
-                ? `${label} — ${safeCurrent}/${safeTotal}`
-                : `${percentage}%`;
-        }
+  async function runWithConcurrency(items, limit, worker, onProgress) {
+    const results = new Array(items.length);
+    let next = 0, completed = 0;
+    async function runner() {
+      while (true) {
+        const index = next++;
+        if (index >= items.length) return;
+        results[index] = await worker(items[index], index);
+        completed++;
+        if (onProgress) onProgress(completed, items.length);
+      }
     }
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, runner));
+    return results;
+  }
 
-    function setBusy(busy) {
-        const start = $("#start");
-        const stop = $("#stop");
-        const exportButton = $("#export");
-
-        if (start) start.disabled = busy;
-        if (stop) stop.disabled = !busy;
-        if (exportButton) {
-            exportButton.disabled = busy || state.pageResults.length === 0;
-        }
-
-        state.scanning = busy;
+  async function runAudit() {
+    if (state.isScanning) return;
+    if (!state.sitemapEntries.length) await loadSitemapFromUrl();
+    const urls = [...new Set(state.sitemapEntries.map(entry => entry.loc))];
+    if (!urls.length) throw new Error("No sitemap URLs are available to scan.");
+    state.isScanning = true;
+    state.auditResults = [];
+    renderAudit();
+    showProgress(true, `Scanning 0 of ${urls.length} pages…`, 0);
+    addActivity("Page audit started", `${urls.length} pages queued`);
+    try {
+      state.auditResults = await runWithConcurrency(urls, 3, scanOnePage, (done, total) => {
+        showProgress(true, `Scanning ${done} of ${total} pages…`, done / total * 100);
+        $("statScanned").textContent = done.toLocaleString();
+      });
+      renderAudit();
+      renderDashboard();
+      const issueCount = state.auditResults.reduce((sum, item) => sum + countIssues(item), 0);
+      const blockedCount = state.auditResults.filter(item => item.blocked).length;
+      const historyEntry = {
+        site: $("siteUrl").value.trim(),
+        date: new Date().toLocaleString(),
+        pages: state.auditResults.length,
+        issues: issueCount,
+        blocked: blockedCount
+      };
+      state.history.unshift(historyEntry);
+      state.history = state.history.slice(0, 20);
+      saveHistoryOnly();
+      renderHistory();
+      addActivity("Page audit completed", `${urls.length} pages · ${issueCount} findings · ${blockedCount} blocked`);
+      toast(`Audit complete: ${urls.length} pages scanned.`);
+    } finally {
+      state.isScanning = false;
+      showProgress(false);
     }
+  }
 
-    function countOccurrences(text, searchTerm) {
-        if (!text || !searchTerm) return 0;
+  function renderAudit() {
+    const query = $("auditSearch").value.trim().toLowerCase();
+    const filter = $("auditFilter").value;
+    let rows = state.auditResults.filter(item => `${item.url} ${item.title}`.toLowerCase().includes(query));
+    if (filter === "issues") rows = rows.filter(item => countIssues(item) > 0);
+    if (filter === "blocked") rows = rows.filter(item => item.blocked || item.status === "ERR" || Number(item.status) >= 400);
+    if (filter === "healthy") rows = rows.filter(item => countIssues(item) === 0);
+    $("auditMeta").textContent = state.auditResults.length ? `${state.auditResults.length} pages scanned · ${state.auditResults.reduce((n, r) => n + countIssues(r), 0)} findings` : "No pages scanned yet.";
+    $("auditTableBody").innerHTML = rows.length ? rows.map(item => {
+      const statusTag = item.status === "ERR" ? '<span class="tag bad">ERR</span>' : Number(item.status) >= 400 ? `<span class="tag bad">${escapeHtml(item.status)}</span>` : `<span class="tag good">${escapeHtml(item.status || "—")}</span>`;
+      const issueHtml = item.issues.length ? `<div class="result-issues">${item.issues.slice(0, 5).map(issue => `<span class="issue-chip">${escapeHtml(issue)}</span>`).join("")}${item.issues.length > 5 ? `<span class="issue-chip neutral">+${item.issues.length - 5} more</span>` : ""}</div>` : '<span class="tag good">No flags</span>';
+      return `<tr>
+        <td><div class="url-cell">${escapeHtml(item.url)}</div><div class="muted small">${escapeHtml(item.title || (item.blocked ? "Security challenge" : "No title"))}</div></td>
+        <td>${statusTag}</td><td>${item.title ? escapeHtml(item.title.slice(0, 70)) : "—"}</td>
+        <td>${item.description ? escapeHtml(item.description.slice(0, 65)) : "—"}</td>
+        <td>${item.h1Count ?? (item.h1 ? 1 : 0)}</td><td>${Number(item.words || 0).toLocaleString()}</td>
+        <td>${Number(item.missingAlt || 0)}</td><td>${issueHtml}</td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="8"><div class="empty"><strong>${state.auditResults.length ? "No matching pages" : "No audit results"}</strong>${state.auditResults.length ? "Change the filter or search term." : "Load a sitemap, then run the page audit."}</div></td></tr>`;
+  }
 
-        const source = String(text).toLowerCase();
-        const term = String(searchTerm).toLowerCase();
-
-        let count = 0;
-        let position = 0;
-
-        while (true) {
-            position = source.indexOf(term, position);
-
-            if (position === -1) break;
-
-            count++;
-            position += term.length;
-        }
-
-        return count;
+  function previewCleanup() {
+    if (!state.sitemapDocuments.length || !state.sitemapEntries.length) throw new Error("Import the target sitemap before running cleanup.");
+    if (state.sitemapDocuments.length !== 1) throw new Error("This cleanup export currently expects one URL-set sitemap file. Open the relevant child sitemap and import that XML file separately.");
+    const targetHost = normalizeHost($("cleanupTargetHost").value.trim() || $("siteUrl").value.trim());
+    if (!targetHost) throw new Error("Enter a valid target website hostname.");
+    const original = state.sitemapDocuments[0].xml;
+    const parsed = parseXml(original);
+    if (parsed.kind !== "urlset") throw new Error("Cleanup requires a URL-set sitemap, not a sitemap index.");
+    const root = parsed.doc.documentElement;
+    const nodes = Array.from(root.children).filter(node => node.localName.toLowerCase() === "url");
+    const matches = [];
+    for (const node of nodes) {
+      const locNode = Array.from(node.children).find(child => child.localName.toLowerCase() === "loc");
+      if (!locNode) continue;
+      const loc = locNode.textContent.trim();
+      const rule = getMatchingRule(loc, targetHost);
+      if (rule) matches.push({ loc, rule: rule.label, node });
     }
+    matches.forEach(match => match.node.parentNode.removeChild(match.node));
+    const serialized = new XMLSerializer().serializeToString(parsed.doc);
+    const cleaned = `<?xml version="1.0" encoding="UTF-8"?>\n${serialized}`;
+    const rechecked = parseXml(cleaned);
+    const remaining = extractUrlEntries(rechecked.doc).filter(entry => getMatchingRule(entry.loc, targetHost));
+    if (remaining.length) throw new Error(`Validation failed: ${remaining.length} obsolete URL(s) remain after cleanup.`);
+    const finalEntries = extractUrlEntries(rechecked.doc);
+    if (finalEntries.length !== nodes.length - matches.length) throw new Error("Validation failed: URL count did not reconcile after cleanup.");
+    state.cleanupMatches = matches.map(({ loc, rule }) => ({ loc, rule }));
+    state.cleanedXml = cleaned;
+    state.cleanupReport = [
+      ...state.cleanupMatches.map(match => ({ url: match.loc, rule: match.rule, action: "Removed from export" }))
+    ];
+    $("cleanedXmlPreview").value = cleaned;
+    $("downloadCleanedBtn").disabled = false;
+    $("downloadCleanedXmlBtn").disabled = false;
+    $("copyCleanedXmlBtn").disabled = false;
+    const summary = matches.length
+      ? `Found ${matches.length} obsolete URL entr${matches.length === 1 ? "y" : "ies"} and removed them from the preview. The cleaned XML is well-formed, contains ${finalEntries.length} URL entries, and has been rechecked for remaining matches. The live sitemap has not been changed.`
+      : `No exact matches for the three configured obsolete paths were found on ${targetHost}. The XML is valid and unchanged. Check that the correct sitemap and host were imported.`;
+    $("cleanupSummary").textContent = summary;
+    $("cleanupSummary").classList.toggle("warning", matches.length === 0);
+    $("cleanupMeta").textContent = `${matches.length} match(es) · ${finalEntries.length} URL entries remain · validation passed`;
+    $("cleanupTableBody").innerHTML = matches.length ? matches.map(match => `
+      <tr><td class="url-cell">${escapeHtml(match.loc)}</td><td>${escapeHtml(match.rule)}</td><td><span class="tag bad">Remove from export</span></td></tr>`).join("") :
+      `<tr><td colspan="3"><div class="empty"><strong>No obsolete entries found</strong>None of the configured exact paths matched this sitemap.</div></td></tr>`;
+    renderDashboard();
+    addActivity("Sitemap cleanup previewed", `${matches.length} obsolete URL(s) matched`);
+    toast(matches.length ? `Cleanup preview ready: ${matches.length} URL(s) marked for removal.` : "No obsolete URL matches found.");
+  }
 
-    function makeSnippet(text, searchTerm = "", length = 180) {
-        const content = String(text || "").replace(/\s+/g, " ").trim();
+  function downloadBlob(content, filename, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
 
-        if (!content) return "";
+  function toCsv(rows) {
+    if (!rows.length) return "";
+    const keys = Object.keys(rows[0]);
+    const cell = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    return [keys.map(cell).join(","), ...rows.map(row => keys.map(key => cell(row[key])).join(","))].join("\r\n");
+  }
 
-        if (!searchTerm) {
-            return content.length > length
-                ? content.slice(0, length) + "..."
-                : content;
-        }
+  function exportSitemapCsv() {
+    if (!state.sitemapEntries.length) throw new Error("No sitemap entries to export.");
+    const rows = state.sitemapEntries.map((entry, index) => ({ number: index + 1, url: entry.loc, lastmod: entry.lastmod, source: entry.sourceUrl }));
+    downloadBlob(toCsv(rows), "sitemap-urls.csv", "text/csv;charset=utf-8");
+  }
 
-        const index = content.toLowerCase().indexOf(
-            String(searchTerm).toLowerCase()
-        );
+  function exportAuditCsv() {
+    if (!state.auditResults.length) throw new Error("No audit results to export.");
+    const rows = state.auditResults.map(item => ({
+      url: item.url, http_status: item.status, title: item.title, title_length: item.title?.length || 0,
+      meta_description: item.description, description_length: item.description?.length || 0,
+      canonical: item.canonical, h1: item.h1, h1_count: item.h1Count, h2_count: item.h2Count,
+      word_count: item.words, image_count: item.images, images_missing_alt: item.missingAlt,
+      internal_links: item.internalLinks, external_links: item.externalLinks, issues: item.issues.join(" | ")
+    }));
+    downloadBlob(toCsv(rows), "website-audit-report.csv", "text/csv;charset=utf-8");
+  }
 
-        if (index === -1) {
-            return content.length > length
-                ? content.slice(0, length) + "..."
-                : content;
-        }
+  function exportCleanupCsv() {
+    if (!state.cleanupReport.length) throw new Error("No cleanup matches to export.");
+    downloadBlob(toCsv(state.cleanupReport), "sitemap-cleanup-report.csv", "text/csv;charset=utf-8");
+  }
 
-        const start = Math.max(0, index - Math.floor(length / 3));
-        const end = Math.min(content.length, start + length);
+  function saveHistoryOnly() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      saved.history = state.history.slice(0, 20);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    } catch {}
+  }
 
-        return (start > 0 ? "..." : "") +
-            content.slice(start, end) +
-            (end < content.length ? "..." : "");
+  function renderHistory() {
+    const el = $("historyList");
+    if (!state.history.length) {
+      el.innerHTML = '<div class="empty"><strong>No saved runs</strong>Complete a website audit to create a history entry.</div>';
+      return;
     }
+    el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Website</th><th>Date</th><th>Pages scanned</th><th>Findings</th><th>Blocked</th></tr></thead><tbody>${
+      state.history.map(item => `<tr><td class="url-cell">${escapeHtml(item.site)}</td><td>${escapeHtml(item.date)}</td><td>${item.pages}</td><td>${item.issues}</td><td>${item.blocked}</td></tr>`).join("")
+    }</tbody></table></div>`;
+  }
 
-    function normalizePageUrl(raw, base) {
-        try {
-            const url = new URL(raw, base);
+  function analyzeKeyword() {
+    const keyword = $("keywordInput").value.trim();
+    if (!keyword) throw new Error("Enter a keyword or phrase to analyze.");
+    if (!state.auditResults.length) throw new Error("Run a page audit first so there is page content to analyze.");
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "gi");
+    const rows = state.auditResults.map(item => {
+      const matches = (item.bodyText || "").match(regex);
+      const count = matches ? matches.length : 0;
+      const density = item.words ? (count / item.words * 100) : 0;
+      return { url: item.url, count, words: item.words || 0, density };
+    }).filter(row => row.count > 0).sort((a, b) => b.count - a.count);
+    const total = rows.reduce((sum, row) => sum + row.count, 0);
+    $("keywordMeta").textContent = `${total} occurrence(s) across ${rows.length} page(s) · approximate density is occurrences divided by page word count`;
+    $("keywordResultsBody").innerHTML = rows.length ? rows.map(row => `
+      <tr><td class="url-cell">${escapeHtml(row.url)}</td><td>${row.count}</td><td>${row.words.toLocaleString()}</td><td>${row.density.toFixed(2)}%</td></tr>`).join("") :
+      '<tr><td colspan="4"><div class="empty"><strong>No occurrences found</strong>The keyword was not found in the currently scanned page text.</div></td></tr>';
+    addActivity("Keyword analysis", `${total} occurrence(s) across ${rows.length} page(s)`);
+  }
 
-            if (!["http:", "https:"].includes(url.protocol)) {
-                return null;
-            }
+  function analyzeFindReplace() {
+    const find = $("findText").value;
+    const replacement = $("replaceText").value;
+    if (!find.trim()) throw new Error("Enter the text you want to find.");
+    if (!state.auditResults.length) throw new Error("Run a page audit first so there is page content to search.");
+    const escaped = find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "gi");
+    const rows = state.auditResults.map(item => {
+      const matches = (item.bodyText || "").match(regex);
+      const count = matches ? matches.length : 0;
+      const preview = count && replacement ? `${count} occurrence(s) would be replaced in a local text preview` : (count ? "Found; no replacement entered" : "—");
+      return { url: item.url, count, preview };
+    }).filter(row => row.count > 0);
+    $("findMeta").textContent = `${rows.reduce((sum, row) => sum + row.count, 0)} total occurrence(s) across ${rows.length} page(s)`;
+    $("findResultsBody").innerHTML = rows.length ? rows.map(row => `<tr><td class="url-cell">${escapeHtml(row.url)}</td><td>${row.count}</td><td>${escapeHtml(row.preview)}</td></tr>`).join("") :
+      '<tr><td colspan="3"><div class="empty"><strong>No occurrences found</strong>The phrase was not found in the currently scanned page text.</div></td></tr>';
+    $("replaceNote").textContent = replacement
+      ? "Replacement is a planning preview only. This tool cannot write changes into the CMS."
+      : "Search completed. Enter a replacement phrase to label the potential change; no website content is modified.";
+    addActivity("Find & replace analysis", `${rows.length} page(s) contain the phrase`);
+  }
 
-            url.hash = "";
-
-            // Remove common tracking parameters.
-            const trackingParams = [
-                "utm_source",
-                "utm_medium",
-                "utm_campaign",
-                "utm_term",
-                "utm_content",
-                "gclid",
-                "fbclid",
-                "msclkid"
-            ];
-
-            trackingParams.forEach(param => {
-                url.searchParams.delete(param);
-            });
-
-            return url.href;
-        } catch (error) {
-            return null;
-        }
+  async function testWorker() {
+    const site = $("siteUrl").value.trim();
+    if (!site) throw new Error("Enter the target website first.");
+    const url = new URL("/", validateHttpUrl(site, "Target website")).href;
+    const result = await fetchViaWorker(url);
+    if (result.challenge) {
+      setConnectionStatus(false, "Target security challenge");
+      throw new Error("The Worker reached the target, but the website returned a bot-verification challenge. The auditor cannot bypass it.");
     }
-
-    // ==========================================
-    // CLOUDFLARE WORKER PROXY
-    // ==========================================
-
-    function getProxyEndpoint() {
-        const input = $("#proxyUrl");
-        const saved = storageGet(PROXY_KEY, "");
-
-        const value = String(
-            input?.value?.trim() || saved || ""
-        ).trim();
-
-        if (value && input) {
-            storageSet(PROXY_KEY, value);
-        }
-
-        return value.replace(/\/+$/, "");
-    }
-
-    async function fetchTarget(rawUrl, resourceType = "page") {
-        const targetUrl = normalizePageUrl(
-            rawUrl,
-            window.location.href
-        );
-
-        if (!targetUrl) {
-            throw new Error("Invalid or unsupported URL: " + rawUrl);
-        }
-
-        const proxyEndpoint = getProxyEndpoint();
-
-        let requestUrl = targetUrl;
-
-        // Route the request through the Cloudflare Worker
-        // when a proxy URL has been configured.
-        if (proxyEndpoint) {
-            let proxyUrl;
-
-            try {
-                proxyUrl = new URL(proxyEndpoint);
-            } catch (error) {
-                throw new Error("Invalid Cloudflare Worker URL.");
-            }
-
-            if (proxyUrl.protocol !== "https:") {
-                throw new Error("The Cloudflare Worker URL must use HTTPS.");
-            }
-
-            proxyUrl.searchParams.set("url", targetUrl);
-            requestUrl = proxyUrl.href;
-        }
-
-        const acceptHeader = resourceType === "sitemap"
-            ? "application/xml, text/xml, application/rss+xml, */*"
-            : "text/html, application/xhtml+xml, */*";
-
-        let response;
-
-        try {
-            response = await fetch(requestUrl, {
-                method: "GET",
-                mode: "cors",
-                credentials: "omit",
-                cache: "no-store",
-                redirect: "follow",
-                headers: {
-                    "Accept": acceptHeader
-                }
-            });
-        } catch (error) {
-            if (!proxyEndpoint) {
-                throw new Error(
-                    "Failed to fetch. This website may block cross-origin " +
-                    "requests. Configure your Cloudflare Worker URL."
-                );
-            }
-
-            throw new Error(
-                "Cloudflare Worker request failed: " +
-                (error.message || "Network or CORS error")
-            );
-        }
-
-        if (!response.ok) {
-            throw new Error(
-                `Request failed (${response.status}) for ${targetUrl}`
-            );
-        }
-
-        return response;
-    }
-
-    async function fetchResource(rawUrl, resourceType = "page") {
-        return await fetchTarget(rawUrl, resourceType);
-    }
-
-    // ==========================================
-    // SITEMAP READER
-    // Supports sitemap.xml and sitemap indexes
-    // ==========================================
-
-    async function readSitemap(rawUrl, depth = 0) {
-        if (state.stop) return;
-
-        const MAX_DEPTH = 5;
-
-        if (depth > MAX_DEPTH) {
-            state.errors.push({
-                url: rawUrl,
-                error: "Maximum sitemap nesting depth reached."
-            });
-            return;
-        }
-
-        const sitemapUrl = normalizePageUrl(
-            rawUrl,
-            window.location.href
-        );
-
-        if (!sitemapUrl) {
-            state.errors.push({
-                url: rawUrl,
-                error: "Invalid sitemap URL."
-            });
-            return;
-        }
-
-        if (state.sitemapFiles.has(sitemapUrl)) {
-            return;
-        }
-
-        state.sitemapFiles.add(sitemapUrl);
-
-        try {
-            const response = await fetchResource(
-                sitemapUrl,
-                "sitemap"
-            );
-
-            const xmlText = await response.text();
-
-            if (!xmlText.trim()) {
-                throw new Error("The sitemap returned an empty response.");
-            }
-
-            const parser = new DOMParser();
-            const xml = parser.parseFromString(
-                xmlText,
-                "application/xml"
-            );
-
-            if (xml.querySelector("parsererror")) {
-                throw new Error("Invalid XML sitemap.");
-            }
-
-            const root = xml.documentElement;
-            const rootName = (
-                root?.localName ||
-                root?.nodeName ||
-                ""
-            ).toLowerCase();
-
-            const locations = Array.from(
-                xml.getElementsByTagName("*")
-            )
-                .filter(node =>
-                    (node.localName || node.nodeName).toLowerCase() === "loc"
-                )
-                .map(node => node.textContent.trim())
-                .filter(Boolean);
-
-            if (!locations.length) {
-                throw new Error("No URLs were found in this sitemap.");
-            }
-
-            const isSitemapIndex =
-                rootName.includes("sitemapindex") ||
-                rootName.includes("sitemap-index");
-
-            if (isSitemapIndex) {
-                for (const childSitemap of locations) {
-                    if (state.stop) break;
-
-                    const maxPages = Number(state.maxPages) || 500;
-
-                    if (state.pageSet.size >= maxPages) {
-                        break;
-                    }
-
-                    await readSitemap(childSitemap, depth + 1);
-                }
-
-                return;
-            }
-
-            const maxPages = Number(state.maxPages) || 500;
-
-            for (const location of locations) {
-                if (state.stop) break;
-
-                if (state.pageSet.size >= maxPages) {
-                    break;
-                }
-
-                const pageUrl = normalizePageUrl(
-                    location,
-                    sitemapUrl
-                );
-
-                if (!pageUrl) continue;
-
-                if (!state.pageSet.has(pageUrl)) {
-                    state.pageSet.add(pageUrl);
-                    state.discoveredCount++;
-                }
-            }
-
-        } catch (error) {
-            state.errors.push({
-                url: sitemapUrl,
-                error: error.message || "Unknown sitemap error."
-            });
-        }
-    }
-
-    // ==========================================
-    // PART 3: PAGE SCANNING + INTERNAL LINKS
-    // ==========================================
-
-    // Make sure all result collections are available.
-    state.pageResults ||= [];
-    state.linkResults ||= [];
-    state.keywordResults ||= [];
-    state.replaceResults ||= [];
-    state.errors ||= [];
-
-    state.sitemapFiles ||= new Set();
-    state.pageSet ||= new Set();
-    state.internalLinks ||= new Map();
-
-    if (!(state.sitemapFiles instanceof Set)) {
-        state.sitemapFiles = new Set(state.sitemapFiles);
-    }
-
-    if (!(state.pageSet instanceof Set)) {
-        state.pageSet = new Set(state.pageSet);
-    }
-
-    if (!(state.internalLinks instanceof Map)) {
-        state.internalLinks = new Map();
-    }
-
-    state.scannedCount ||= 0;
-
-    // ==========================================
-    // READ KEYWORDS
-    // ==========================================
-
-    function getKeywords() {
-        const input = $("#keywords");
-
-        if (!input) return [];
-
-        return [...new Set(
-            input.value
-                .split(/[\n,;]+/)
-                .map(keyword => keyword.trim())
-                .filter(Boolean)
-        )];
-    }
-
-    function getFindReplaceValues() {
-        const findInput =
-            $("#findText") ||
-            $("#find");
-
-        const replaceInput =
-            $("#replaceText") ||
-            $("#replace");
-
-        return {
-            find: findInput?.value?.trim() || "",
-            replace: replaceInput?.value ?? ""
-        };
-    }
-
-    // ==========================================
-    // EXTRACT PAGE INFORMATION
-    // ==========================================
-
-    function extractPageData(html, pageUrl) {
-        const parser = new DOMParser();
-
-        const doc = parser.parseFromString(
-            html,
-            "text/html"
-        );
-
-        const title =
-            doc.querySelector("title")?.textContent?.trim() || "";
-
-        const metaDescription =
-            doc.querySelector('meta[name="description"]')
-                ?.getAttribute("content")
-                ?.trim() || "";
-
-        const canonicalElement =
-            doc.querySelector('link[rel="canonical"]');
-
-        const canonical = canonicalElement
-            ? normalizePageUrl(
-                canonicalElement.getAttribute("href"),
-                pageUrl
-            )
-            : "";
-
-        const robots =
-            doc.querySelector('meta[name="robots"]')
-                ?.getAttribute("content")
-                ?.trim() || "";
-
-        const headings = {};
-
-        for (let level = 1; level <= 6; level++) {
-            const elements = Array.from(
-                doc.querySelectorAll(`h${level}`)
-            );
-
-            headings[`h${level}`] = elements.map(element =>
-                element.textContent.trim()
-            );
-        }
-
-        const h1Count = headings.h1.length;
-
-        const images = Array.from(
-            doc.querySelectorAll("img")
-        ).map(image => ({
-            src: normalizePageUrl(
-                image.getAttribute("src") ||
-                image.getAttribute("data-src") ||
-                "",
-                pageUrl
-            ) || image.getAttribute("src") || "",
-
-            alt: image.getAttribute("alt") || "",
-
-            hasAlt: image.hasAttribute("alt") &&
-                image.getAttribute("alt").trim() !== ""
-        }));
-
-        const body = doc.body || doc.documentElement;
-
-        // Remove elements that should not contribute to content analysis.
-        body.querySelectorAll(
-            "script, style, noscript, svg, iframe"
-        ).forEach(element => element.remove());
-
-        const textContent = (body.textContent || "")
-            .replace(/\s+/g, " ")
-            .trim();
-
-        const wordCount = textContent
-            ? textContent.split(/\s+/).length
-            : 0;
-
-        const pageUrlObject = new URL(pageUrl);
-
-        const internalLinks = Array.from(
-            doc.querySelectorAll("a[href]")
-        )
-            .map(anchor => {
-                const href = anchor.getAttribute("href");
-
-                if (!href) return null;
-
-                const normalized = normalizePageUrl(
-                    href,
-                    pageUrl
-                );
-
-                if (!normalized) return null;
-
-                let linkUrl;
-
-                try {
-                    linkUrl = new URL(normalized);
-                } catch (error) {
-                    return null;
-                }
-
-                if (linkUrl.origin !== pageUrlObject.origin) {
-                    return null;
-                }
-
-                return {
-                    url: normalized,
-                    text: anchor.textContent.trim(),
-                    sourcePage: pageUrl
-                };
-            })
-            .filter(Boolean);
-
-        return {
-            url: pageUrl,
-            title,
-            metaDescription,
-            canonical,
-            robots,
-            noindex: /noindex/i.test(robots),
-            headings,
-            h1Count,
-            images,
-            imageCount: images.length,
-            missingAltCount: images.filter(
-                image => !image.hasAlt
-            ).length,
-            wordCount,
-            textContent,
-            internalLinks
-        };
-    }
-
-    // ==========================================
-    // KEYWORD OCCURRENCE ANALYSIS
-    // ==========================================
-
-    function analyzeKeywords(pageData) {
-        const keywords = getKeywords();
-
-        if (!keywords.length) return;
-
-        keywords.forEach(keyword => {
-            const occurrences = countOccurrences(
-                pageData.textContent,
-                keyword
-            );
-
-            state.keywordResults.push({
-                url: pageData.url,
-                keyword,
-                occurrences,
-                snippet: occurrences
-                    ? makeSnippet(
-                        pageData.textContent,
-                        keyword
-                    )
-                    : ""
-            });
-        });
-    }
-
-    // ==========================================
-    // FIND AND REPLACE ANALYSIS
-    // ==========================================
-
-    function analyzeFindReplace(pageData) {
-        const values = getFindReplaceValues();
-
-        if (!values.find) return;
-
-        const occurrences = countOccurrences(
-            pageData.textContent,
-            values.find
-        );
-
-        if (!occurrences) return;
-
-        const escapedFind = values.find.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-        );
-
-        const preview = pageData.textContent.replace(
-            new RegExp(escapedFind, "gi"),
-            values.replace
-        );
-
-        state.replaceResults.push({
-            url: pageData.url,
-            find: values.find,
-            replace: values.replace,
-            occurrences,
-            preview: makeSnippet(preview)
-        });
-    }
-
-    // ==========================================
-    // SCAN ONE PAGE
-    // ==========================================
-
-    async function scanPage(pageUrl) {
-        if (state.stop) return null;
-
-        try {
-            const response = await fetchResource(
-                pageUrl,
-                "page"
-            );
-
-            const contentType =
-                response.headers.get("content-type") || "";
-
-            if (
-                contentType &&
-                !/html|xhtml/i.test(contentType)
-            ) {
-                throw new Error(
-                    "URL did not return an HTML document."
-                );
-            }
-
-            const html = await response.text();
-
-            if (!html.trim()) {
-                throw new Error("The page returned empty content.");
-            }
-
-            const pageData = extractPageData(
-                html,
-                response.url || pageUrl
-            );
-
-            state.pageResults.push(pageData);
-
-            analyzeKeywords(pageData);
-            analyzeFindReplace(pageData);
-
-            // Collect unique internal links for later checking.
-            pageData.internalLinks.forEach(link => {
-                if (!state.internalLinks.has(link.url)) {
-                    state.internalLinks.set(link.url, {
-                        url: link.url,
-                        sourcePages: [link.sourcePage],
-                        anchorText: link.text
-                    });
-                } else {
-                    const existing = state.internalLinks.get(
-                        link.url
-                    );
-
-                    if (
-                        !existing.sourcePages.includes(
-                            link.sourcePage
-                        )
-                    ) {
-                        existing.sourcePages.push(
-                            link.sourcePage
-                        );
-                    }
-                }
-            });
-
-            state.scannedCount++;
-
-            return pageData;
-
-        } catch (error) {
-            state.errors.push({
-                url: pageUrl,
-                error: error.message || "Page scanning failed."
-            });
-
-            return null;
-        }
-    }
-
-    // ==========================================
-    // CONCURRENT TASK RUNNER
-    // ==========================================
-
-    async function runPool(items, concurrency, callback) {
-        let index = 0;
-
-        const workers = Array.from(
-            {
-                length: Math.min(
-                    concurrency,
-                    items.length
-                )
-            },
-            async () => {
-                while (!state.stop) {
-                    const currentIndex = index++;
-
-                    if (currentIndex >= items.length) {
-                        break;
-                    }
-
-                    await callback(
-                        items[currentIndex],
-                        currentIndex
-                    );
-                }
-            }
-        );
-
-        await Promise.all(workers);
-    }
-
-    // ==========================================
-    // CHECK INTERNAL LINKS
-    // ==========================================
-
-    async function checkInternalLinks() {
-        const links = Array.from(
-            state.internalLinks.values()
-        );
-
-        if (!links.length) return;
-
-        let checked = 0;
-
-        await runPool(
-            links,
-            5,
-            async link => {
-                if (state.stop) return;
-
-                const result = {
-                    url: link.url,
-                    sourcePages: link.sourcePages,
-                    anchorText: link.anchorText,
-                    status: "Unknown",
-                    broken: false,
-                    error: ""
-                };
-
-                try {
-                    const response = await fetchResource(
-                        link.url,
-                        "page"
-                    );
-
-                    result.status = response.status;
-
-                    if (!response.ok) {
-                        result.broken = true;
-                        result.error =
-                            `HTTP ${response.status}`;
-                    }
-
-                } catch (error) {
-                    result.broken = true;
-                    result.status = "Failed";
-                    result.error =
-                        error.message || "Request failed.";
-                }
-
-                state.linkResults.push(result);
-
-                checked++;
-
-                setProgress(
-                    checked,
-                    links.length,
-                    "Checking internal links"
-                );
-            }
-        );
-    }
-
-    // ==========================================
-    // RESULT SUMMARY HELPERS
-    // ==========================================
-
-    function getPageSummary() {
-        const pages = state.pageResults;
-
-        return {
-            total: pages.length,
-
-            missingTitles: pages.filter(
-                page => !page.title
-            ).length,
-
-            missingDescriptions: pages.filter(
-                page => !page.metaDescription
-            ).length,
-
-            multipleH1: pages.filter(
-                page => page.h1Count > 1
-            ).length,
-
-            missingH1: pages.filter(
-                page => page.h1Count === 0
-            ).length,
-
-            missingImageAlt: pages.reduce(
-                (total, page) =>
-                    total + page.missingAltCount,
-                0
-            ),
-
-            noindex: pages.filter(
-                page => page.noindex
-            ).length,
-
-            brokenLinks: state.linkResults.filter(
-                link => link.broken
-            ).length
-        };
-    }
-
-    // ==========================================
-    // PART 4: RESULTS + HISTORY + CSV EXPORT
-    // ==========================================
-
-    state.activeTab ||= "overview";
-    state.history ||= storageGet(HISTORY_KEY, []);
-
-    // ==========================================
-    // RESULTS CONTAINER
-    // ==========================================
-
-    function getResultsContainer() {
-        let container = shadow.querySelector(
-            "#resultsContent, #results-content, " +
-            "#tabContent, #tab-content, " +
-            "[data-results-content], .results-content"
-        );
-
-        if (container) return container;
-
-        const parent = shadow.querySelector(
-            "#results, #resultsArea, #results-area, " +
-            ".results-area, .results-panel"
-        ) || shadow.querySelector("#panel") || root;
-
-        container = document.createElement("div");
-        container.id = "auditorResultsContent";
-        container.className = "results-content";
-
-        parent.appendChild(container);
-
-        return container;
-    }
-
-    // ==========================================
-    // RENDER HELPERS
-    // ==========================================
-
-    function renderMetric(label, value, description = "") {
-        return `
-            <div class="metric-card">
-                <div class="metric-label">
-                    ${escapeHTML(label)}
-                </div>
-
-                <div class="metric-value">
-                    ${escapeHTML(value)}
-                </div>
-
-                ${
-                    description
-                        ? `<div class="metric-description">
-                            ${escapeHTML(description)}
-                           </div>`
-                        : ""
-                }
-            </div>
-        `;
-    }
-
-    function renderEmpty(message) {
-        return `
-            <div class="empty-state">
-                <div class="empty-title">No results yet</div>
-                <div class="empty-description">
-                    ${escapeHTML(message)}
-                </div>
-            </div>
-        `;
-    }
-
-    function renderTable(headers, rows) {
-        if (!rows.length) {
-            return renderEmpty("Nothing to display.");
-        }
-
-        return `
-            <div class="table-wrapper">
-                <table class="audit-table">
-                    <thead>
-                        <tr>
-                            ${headers.map(header => `
-                                <th>${escapeHTML(header)}</th>
-                            `).join("")}
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        ${rows.map(row => `
-                            <tr>
-                                ${row.map(cell => `
-                                    <td>${cell}</td>
-                                `).join("")}
-                            </tr>
-                        `).join("")}
-                    </tbody>
-                </table>
-            </div>
-        `;
-    }
-
-    function renderUrl(url) {
-        return `
-            <a
-                href="${escapeHTML(url)}"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="audit-link"
-            >
-                ${escapeHTML(url)}
-            </a>
-        `;
-    }
-
-    function renderStatus(value, success = false) {
-        const statusClass = success
-            ? "success"
-            : "warning";
-
-        return `
-            <span class="status-pill ${statusClass}">
-                ${escapeHTML(value)}
-            </span>
-        `;
-    }
-
-    // ==========================================
-    // OVERVIEW DASHBOARD
-    // ==========================================
-
-    function renderOverview() {
-        const summary = getPageSummary();
-
-        const totalPages = summary.total;
-        const brokenLinks = summary.brokenLinks;
-
-        const issueCount =
-            summary.missingTitles +
-            summary.missingDescriptions +
-            summary.missingH1 +
-            summary.multipleH1 +
-            summary.missingImageAlt +
-            summary.noindex +
-            brokenLinks;
-
-        return `
-            <div class="overview-grid">
-
-                ${renderMetric(
-                    "Pages Scanned",
-                    totalPages,
-                    "Pages successfully analyzed"
-                )}
-
-                ${renderMetric(
-                    "Internal Links",
-                    state.internalLinks.size,
-                    "Unique internal links discovered"
-                )}
-
-                ${renderMetric(
-                    "Broken Links",
-                    brokenLinks,
-                    "Links that failed to load"
-                )}
-
-                ${renderMetric(
-                    "Total Issues",
-                    issueCount,
-                    "Detected SEO and content issues"
-                )}
-
-            </div>
-
-            <div class="section-heading">
-                SEO Overview
-            </div>
-
-            <div class="overview-grid">
-
-                ${renderMetric(
-                    "Missing Titles",
-                    summary.missingTitles
-                )}
-
-                ${renderMetric(
-                    "Missing Descriptions",
-                    summary.missingDescriptions
-                )}
-
-                ${renderMetric(
-                    "Missing H1",
-                    summary.missingH1
-                )}
-
-                ${renderMetric(
-                    "Multiple H1",
-                    summary.multipleH1
-                )}
-
-                ${renderMetric(
-                    "Missing Image ALT",
-                    summary.missingImageAlt
-                )}
-
-                ${renderMetric(
-                    "Noindex Pages",
-                    summary.noindex
-                )}
-
-            </div>
-
-            <div class="section-heading">
-                Scan Information
-            </div>
-
-            <div class="info-card">
-                <div>
-                    <span class="info-label">Discovered URLs</span>
-                    <strong>${state.discoveredCount || 0}</strong>
-                </div>
-
-                <div>
-                    <span class="info-label">Scanned URLs</span>
-                    <strong>${state.scannedCount || 0}</strong>
-                </div>
-
-                <div>
-                    <span class="info-label">Sitemap Files</span>
-                    <strong>${state.sitemapFiles.size}</strong>
-                </div>
-
-                <div>
-                    <span class="info-label">Errors</span>
-                    <strong>${state.errors.length}</strong>
-                </div>
-            </div>
-
-            ${
-                state.errors.length
-                    ? `
-                        <div class="section-heading">
-                            Scan Warnings
-                        </div>
-
-                        <div class="warning-card">
-                            ${state.errors.length} request(s) failed.
-                            Check the Errors tab for details.
-                        </div>
-                    `
-                    : ""
-            }
-        `;
-    }
-
-    // ==========================================
-    // PAGES TABLE
-    // ==========================================
-
-    function renderPages() {
-        if (!state.pageResults.length) {
-            return renderEmpty(
-                "Run an audit to see scanned pages."
-            );
-        }
-
-        const rows = state.pageResults.map(page => [
-            renderUrl(page.url),
-
-            escapeHTML(page.title || "Missing"),
-
-            escapeHTML(page.metaDescription || "Missing"),
-
-            page.h1Count,
-
-            page.wordCount,
-
-            page.imageCount,
-
-            page.missingAltCount,
-
-            page.noindex
-                ? renderStatus("Noindex")
-                : renderStatus("Indexable", true)
-        ]);
-
-        return `
-            <div class="section-heading">
-                Scanned Pages (${state.pageResults.length})
-            </div>
-
-            ${renderTable(
-                [
-                    "URL",
-                    "Title",
-                    "Meta Description",
-                    "H1",
-                    "Words",
-                    "Images",
-                    "Missing ALT",
-                    "Indexing"
-                ],
-                rows
-            )}
-        `;
-    }
-
-    // ==========================================
-    // INTERNAL LINKS TABLE
-    // ==========================================
-
-    function renderLinks() {
-        if (!state.linkResults.length) {
-            return renderEmpty(
-                "Internal link checks will appear after page scanning."
-            );
-        }
-
-        const rows = state.linkResults.map(link => [
-            renderUrl(link.url),
-
-            escapeHTML(link.status),
-
-            link.broken
-                ? renderStatus("Broken")
-                : renderStatus("Working", true),
-
-            escapeHTML(
-                link.sourcePages.length.toString()
-            ),
-
-            escapeHTML(
-                link.sourcePages[0] || ""
-            ),
-
-            escapeHTML(link.error || "—")
-        ]);
-
-        return `
-            <div class="section-heading">
-                Internal Links (${state.linkResults.length})
-            </div>
-
-            ${renderTable(
-                [
-                    "Destination",
-                    "HTTP Status",
-                    "Result",
-                    "Source Count",
-                    "Example Source",
-                    "Error"
-                ],
-                rows
-            )}
-        `;
-    }
-
-    // ==========================================
-    // KEYWORD RESULTS
-    // ==========================================
-
-    function renderKeywords() {
-        if (!state.keywordResults.length) {
-            return renderEmpty(
-                "Enter keywords before starting the audit."
-            );
-        }
-
-        const rows = state.keywordResults.map(item => [
-            renderUrl(item.url),
-
-            escapeHTML(item.keyword),
-
-            item.occurrences,
-
-            escapeHTML(
-                item.occurrences
-                    ? item.snippet
-                    : "No occurrence found"
-            )
-        ]);
-
-        return `
-            <div class="section-heading">
-                Keyword Analysis
-            </div>
-
-            ${renderTable(
-                [
-                    "Page",
-                    "Keyword",
-                    "Occurrences",
-                    "Content Preview"
-                ],
-                rows
-            )}
-        `;
-    }
-
-    // ==========================================
-    // FIND AND REPLACE RESULTS
-    // ==========================================
-
-    function renderReplace() {
-        if (!state.replaceResults.length) {
-            return renderEmpty(
-                "No matching text was found."
-            );
-        }
-
-        const rows = state.replaceResults.map(item => [
-            renderUrl(item.url),
-
-            escapeHTML(item.find),
-
-            escapeHTML(item.replace),
-
-            item.occurrences,
-
-            escapeHTML(item.preview)
-        ]);
-
-        return `
-            <div class="section-heading">
-                Find and Replace Matches
-            </div>
-
-            <div class="warning-card">
-                These are suggested text replacements.
-                No website content has been changed.
-            </div>
-
-            ${renderTable(
-                [
-                    "Page",
-                    "Find",
-                    "Replace With",
-                    "Matches",
-                    "Preview"
-                ],
-                rows
-            )}
-        `;
-    }
-
-    // ==========================================
-    // ERRORS TABLE
-    // ==========================================
-
-    function renderErrors() {
-        if (!state.errors.length) {
-            return renderEmpty(
-                "No scanning errors were recorded."
-            );
-        }
-
-        const rows = state.errors.map(error => [
-            renderUrl(error.url),
-
-            escapeHTML(error.error)
-        ]);
-
-        return `
-            <div class="section-heading">
-                Scan Errors (${state.errors.length})
-            </div>
-
-            ${renderTable(
-                [
-                    "URL",
-                    "Error"
-                ],
-                rows
-            )}
-        `;
-    }
-
-    // ==========================================
-    // HISTORY
-    // ==========================================
-
-    function loadHistory() {
-        const history = storageGet(
-            HISTORY_KEY,
-            []
-        );
-
-        state.history = Array.isArray(history)
-            ? history
-            : [];
-
-        return state.history;
-    }
-
-    function saveHistory() {
-        storageSet(
-            HISTORY_KEY,
-            state.history
-        );
-    }
-
-    function addHistoryEntry() {
-        const summary = getPageSummary();
-
-        const entry = {
-            date: new Date().toISOString(),
-
-            sitemap: $("#sitemap")?.value?.trim() || "",
-
-            pagesScanned: state.pageResults.length,
-
-            linksChecked: state.linkResults.length,
-
-            brokenLinks: summary.brokenLinks,
-
-            missingTitles: summary.missingTitles,
-
-            missingDescriptions: summary.missingDescriptions,
-
-            missingH1: summary.missingH1,
-
-            multipleH1: summary.multipleH1,
-
-            missingImageAlt: summary.missingImageAlt,
-
-            errors: state.errors.length
-        };
-
-        state.history.unshift(entry);
-
-        // Keep the latest 30 audit records.
-        state.history = state.history.slice(0, 30);
-
-        saveHistory();
-    }
-
-    function renderHistory() {
-        loadHistory();
-
-        if (!state.history.length) {
-            return renderEmpty(
-                "Completed audit history will appear here."
-            );
-        }
-
-        const rows = state.history.map(entry => [
-            escapeHTML(
-                new Date(entry.date).toLocaleString()
-            ),
-
-            escapeHTML(entry.sitemap || "Unknown"),
-
-            entry.pagesScanned,
-
-            entry.linksChecked,
-
-            entry.brokenLinks,
-
-            entry.errors
-        ]);
-
-        return `
-            <div class="section-heading">
-                Audit History
-            </div>
-
-            ${renderTable(
-                [
-                    "Date",
-                    "Sitemap",
-                    "Pages",
-                    "Links",
-                    "Broken Links",
-                    "Errors"
-                ],
-                rows
-            )}
-        `;
-    }
-
-    // ==========================================
-    // RENDER ACTIVE TAB
-    // ==========================================
-
-    function renderResults(tab = state.activeTab) {
-        state.activeTab = tab || "overview";
-
-        const container = getResultsContainer();
-
-        const renderers = {
-            overview: renderOverview,
-            pages: renderPages,
-            links: renderLinks,
-            keywords: renderKeywords,
-            replace: renderReplace,
-            errors: renderErrors,
-            history: renderHistory
-        };
-
-        const renderer =
-            renderers[state.activeTab] ||
-            renderOverview;
-
-        container.innerHTML = renderer();
-
-        // Update active tab styling.
-        shadow.querySelectorAll("[data-tab]").forEach(button => {
-            const active =
-                button.getAttribute("data-tab") === state.activeTab;
-
-            button.classList.toggle("active", active);
-            button.setAttribute(
-                "aria-selected",
-                active ? "true" : "false"
-            );
-        });
-
-        const exportButton = $("#export");
-
-        if (exportButton) {
-            exportButton.disabled =
-                state.scanning ||
-                (
-                    state.pageResults.length === 0 &&
-                    state.linkResults.length === 0
-                );
-        }
-    }
-
-    // ==========================================
-    // CSV EXPORT HELPERS
-    // ==========================================
-
-    function csvEscape(value) {
-        const text = String(value ?? "");
-
-        return '"' + text.replace(/"/g, '""') + '"';
-    }
-
-    function downloadCSV(filename, headers, rows) {
-        const csv = [
-            headers.map(csvEscape).join(","),
-
-            ...rows.map(row =>
-                row.map(csvEscape).join(",")
-            )
-        ].join("\r\n");
-
-        const blob = new Blob(
-            ["\uFEFF" + csv],
-            {
-                type: "text/csv;charset=utf-8;"
-            }
-        );
-
-        const url = URL.createObjectURL(blob);
-
-        const anchor = document.createElement("a");
-
-        anchor.href = url;
-        anchor.download = filename;
-
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-
-        setTimeout(() => {
-            URL.revokeObjectURL(url);
-        }, 1000);
-    }
-
-    // ==========================================
-    // EXPORT CURRENT RESULTS
-    // ==========================================
-
-    function exportResults() {
-        const tab = state.activeTab;
-
-        if (
-            !state.pageResults.length &&
-            !state.linkResults.length
-        ) {
-            setStatus(
-                "There are no results to export.",
-                "warning"
-            );
-            return;
-        }
-
-        const timestamp = new Date()
-            .toISOString()
-            .replace(/[:.]/g, "-");
-
-        if (tab === "links") {
-            const headers = [
-                "URL",
-                "Status",
-                "Broken",
-                "Source Pages",
-                "Example Source",
-                "Error"
-            ];
-
-            const rows = state.linkResults.map(link => [
-                link.url,
-                link.status,
-                link.broken,
-                link.sourcePages.join(" | "),
-                link.sourcePages[0] || "",
-                link.error
-            ]);
-
-            downloadCSV(
-                `neon-auditor-links-${timestamp}.csv`,
-                headers,
-                rows
-            );
-
-            return;
-        }
-
-        if (tab === "keywords") {
-            const headers = [
-                "Page URL",
-                "Keyword",
-                "Occurrences",
-                "Snippet"
-            ];
-
-            const rows = state.keywordResults.map(item => [
-                item.url,
-                item.keyword,
-                item.occurrences,
-                item.snippet
-            ]);
-
-            downloadCSV(
-                `neon-auditor-keywords-${timestamp}.csv`,
-                headers,
-                rows
-            );
-
-            return;
-        }
-
-        if (tab === "replace") {
-            const headers = [
-                "Page URL",
-                "Find",
-                "Replace",
-                "Occurrences",
-                "Preview"
-            ];
-
-            const rows = state.replaceResults.map(item => [
-                item.url,
-                item.find,
-                item.replace,
-                item.occurrences,
-                item.preview
-            ]);
-
-            downloadCSV(
-                `neon-auditor-replacements-${timestamp}.csv`,
-                headers,
-                rows
-            );
-
-            return;
-        }
-
-        if (tab === "errors") {
-            const headers = [
-                "URL",
-                "Error"
-            ];
-
-            const rows = state.errors.map(error => [
-                error.url,
-                error.error
-            ]);
-
-            downloadCSV(
-                `neon-auditor-errors-${timestamp}.csv`,
-                headers,
-                rows
-            );
-
-            return;
-        }
-
-        // Default export: all scanned pages.
-        const headers = [
-            "URL",
-            "Title",
-            "Meta Description",
-            "Canonical",
-            "Robots",
-            "H1 Count",
-            "H1 Headings",
-            "Word Count",
-            "Image Count",
-            "Missing Image ALT",
-            "Internal Link Count"
-        ];
-
-        const rows = state.pageResults.map(page => [
-            page.url,
-            page.title,
-            page.metaDescription,
-            page.canonical,
-            page.robots,
-            page.h1Count,
-            page.headings.h1.join(" | "),
-            page.wordCount,
-            page.imageCount,
-            page.missingAltCount,
-            page.internalLinks.length
-        ]);
-
-        downloadCSV(
-            `neon-auditor-pages-${timestamp}.csv`,
-            headers,
-            rows
-        );
-    }
-
-    // ==========================================
-    // PART 5: AUDIT RUNNER + EVENT LISTENERS
-    // ==========================================
-
-    // ==========================================
-    // RESET AUDIT DATA
-    // ==========================================
-
-    function resetAuditData() {
-        state.stop = false;
-
-        state.pageResults = [];
-        state.linkResults = [];
-        state.keywordResults = [];
-        state.replaceResults = [];
-        state.errors = [];
-
-        state.sitemapFiles = new Set();
-        state.pageSet = new Set();
-        state.internalLinks = new Map();
-
-        state.discoveredCount = 0;
-        state.scannedCount = 0;
-    }
-
-    // ==========================================
-    // CLEAR RESULTS
-    // ==========================================
-
-    function clearResults() {
-        if (state.scanning) {
-            setStatus(
-                "Stop the current scan before clearing results.",
-                "warning"
-            );
-            return;
-        }
-
-        resetAuditData();
-
-        setProgress(0, 1, "Ready");
-
-        setStatus(
-            "Results cleared. Ready for a new audit.",
-            "info"
-        );
-
-        renderResults("overview");
-    }
-
-    // ==========================================
-    // START AUDIT
-    // ==========================================
-
-    async function runAudit() {
-        if (state.scanning) return;
-
-        const sitemapInput = $("#sitemap");
-
-        const sitemapUrl =
-            sitemapInput?.value?.trim() ||
-            defaultSitemap();
-
-        if (!sitemapUrl) {
-            setStatus(
-                "Please enter a sitemap URL.",
-                "warning"
-            );
-            return;
-        }
-
-        try {
-            const parsedSitemap = new URL(sitemapUrl);
-
-            if (
-                !["http:", "https:"].includes(
-                    parsedSitemap.protocol
-                )
-            ) {
-                throw new Error("Invalid sitemap protocol.");
-            }
-
-        } catch (error) {
-            setStatus(
-                "Please enter a valid sitemap URL.",
-                "error"
-            );
-            return;
-        }
-
-        const maxPagesInput =
-            $("#maxPages") ||
-            $("#max-pages") ||
-            $("#pageLimit");
-
-        const requestedMaxPages = Number(
-            maxPagesInput?.value
-        );
-
-        state.maxPages = Math.max(
-            1,
-            Math.min(
-                10000,
-                Number.isFinite(requestedMaxPages) &&
-                requestedMaxPages > 0
-                    ? Math.floor(requestedMaxPages)
-                    : 500
-            )
-        );
-
-        if (maxPagesInput) {
-            maxPagesInput.value = state.maxPages;
-        }
-
-        resetAuditData();
-
-        setBusy(true);
-
-        setProgress(0, 1, "Starting audit");
-
-        setStatus(
-            "Reading sitemap...",
-            "info"
-        );
-
-        try {
-            // ----------------------------------
-            // STEP 1: READ SITEMAP
-            // ----------------------------------
-
-            await readSitemap(sitemapUrl);
-
-            if (state.stop) {
-                setStatus(
-                    "Audit stopped while reading sitemap.",
-                    "warning"
-                );
-
-                return;
-            }
-
-            const pageUrls = Array.from(
-                state.pageSet
-            );
-
-            if (!pageUrls.length) {
-                renderResults(
-                    state.errors.length
-                        ? "errors"
-                        : "overview"
-                );
-
-                setStatus(
-                    "No pages were discovered. Check the sitemap URL, proxy configuration, and errors.",
-                    "error"
-                );
-
-                return;
-            }
-
-            // ----------------------------------
-            // STEP 2: SCAN PAGES
-            // ----------------------------------
-
-            setStatus(
-                `Found ${pageUrls.length} pages. Starting page analysis...`,
-                "info"
-            );
-
-            setProgress(
-                0,
-                pageUrls.length,
-                "Scanning pages"
-            );
-
-            await runPool(
-                pageUrls,
-                4,
-                async (pageUrl, index) => {
-                    if (state.stop) return;
-
-                    await scanPage(pageUrl);
-
-                    setProgress(
-                        index + 1,
-                        pageUrls.length,
-                        "Scanning pages"
-                    );
-                }
-            );
-
-            if (state.stop) {
-                setStatus(
-                    "Page scanning stopped. Showing partial results.",
-                    "warning"
-                );
-
-                addHistoryEntry();
-                renderResults("overview");
-
-                return;
-            }
-
-            // ----------------------------------
-            // STEP 3: CHECK INTERNAL LINKS
-            // ----------------------------------
-
-            const totalLinks = state.internalLinks.size;
-
-            if (totalLinks > 0) {
-                setStatus(
-                    `Checking ${totalLinks} internal links...`,
-                    "info"
-                );
-
-                await checkInternalLinks();
-            }
-
-            if (state.stop) {
-                setStatus(
-                    "Link checking stopped. Showing partial results.",
-                    "warning"
-                );
-            } else {
-                setStatus(
-                    "Audit completed successfully.",
-                    "success"
-                );
-            }
-
-            // ----------------------------------
-            // STEP 4: SAVE HISTORY
-            // ----------------------------------
-
-            addHistoryEntry();
-
-            // ----------------------------------
-            // STEP 5: DISPLAY RESULTS
-            // ----------------------------------
-
-            renderResults("overview");
-
-            const summary = getPageSummary();
-
-            setProgress(
-                1,
-                1,
-                "Audit complete"
-            );
-
-            if (!state.stop) {
-                setStatus(
-                    `Completed: ${state.pageResults.length} pages scanned, ` +
-                    `${state.linkResults.length} links checked, ` +
-                    `${summary.brokenLinks} broken links, ` +
-                    `${state.errors.length} errors.`,
-                    "success"
-                );
-            }
-
-        } catch (error) {
-            console.error(
-                "Neon Website Auditor Error:",
-                error
-            );
-
-            state.errors.push({
-                url: sitemapUrl,
-                error: error.message || "Unexpected audit error."
-            });
-
-            setStatus(
-                error.message || "An unexpected error occurred.",
-                "error"
-            );
-
-            renderResults("errors");
-
-        } finally {
-            setBusy(false);
-
-            // Refresh the current tab and button states.
-            renderResults(state.activeTab);
-        }
-    }
-
-    // ==========================================
-    // STOP AUDIT
-    // ==========================================
-
-    function stopAudit() {
-        if (!state.scanning) return;
-
-        state.stop = true;
-
-        setStatus(
-            "Stopping audit after the current requests finish...",
-            "warning"
-        );
-    }
-
-    // ==========================================
-    // PANEL CONTROLS
-    // ==========================================
-
-    function setPanelOpen(open) {
-        const panel = $("#panel");
-
-        if (!panel) return;
-
-        panel.hidden = !open;
-
-        panel.classList.toggle(
-            "open",
-            open
-        );
-
-        panel.setAttribute(
-            "aria-hidden",
-            open ? "false" : "true"
-        );
-    }
-
-    // ==========================================
-    // EVENT LISTENERS
-    // ==========================================
-
-    function bindEvents() {
-        // Start audit.
-        const startButton = $("#start");
-
-        if (startButton) {
-            startButton.addEventListener(
-                "click",
-                runAudit
-            );
-        }
-
-        // Stop audit.
-        const stopButton = $("#stop");
-
-        if (stopButton) {
-            stopButton.addEventListener(
-                "click",
-                stopAudit
-            );
-        }
-
-        // Export results.
-        const exportButton = $("#export");
-
-        if (exportButton) {
-            exportButton.addEventListener(
-                "click",
-                exportResults
-            );
-        }
-
-        // Clear results.
-        const clearButton =
-            $("#clear") ||
-            $("#clearResults");
-
-        if (clearButton) {
-            clearButton.addEventListener(
-                "click",
-                clearResults
-            );
-        }
-
-        // Save Cloudflare Worker URL.
-        const proxyInput = $("#proxyUrl");
-
-        if (proxyInput) {
-            const savedProxy = storageGet(
-                PROXY_KEY,
-                ""
-            );
-
-            if (!proxyInput.value && savedProxy) {
-                proxyInput.value = savedProxy;
-            }
-
-            proxyInput.addEventListener(
-                "change",
-                () => {
-                    storageSet(
-                        PROXY_KEY,
-                        proxyInput.value.trim()
-                    );
-                }
-            );
-
-            proxyInput.addEventListener(
-                "input",
-                () => {
-                    storageSet(
-                        PROXY_KEY,
-                        proxyInput.value.trim()
-                    );
-                }
-            );
-        }
-
-        // Tab navigation.
-        shadow.addEventListener(
-            "click",
-            event => {
-                const tabButton = event.target.closest(
-                    "[data-tab]"
-                );
-
-                if (!tabButton) return;
-
-                const tab = tabButton.getAttribute(
-                    "data-tab"
-                );
-
-                if (!tab) return;
-
-                renderResults(tab);
-            }
-        );
-
-        // Open panel.
-        const launcher =
-            $("#launcher") ||
-            $("#toggle") ||
-            shadow.querySelector(
-                '[data-action="toggle"]'
-            );
-
-        if (launcher) {
-            launcher.addEventListener(
-                "click",
-                () => {
-                    const panel = $("#panel");
-
-                    if (!panel) return;
-
-                    const isOpen =
-                        !panel.hidden &&
-                        panel.classList.contains("open");
-
-                    setPanelOpen(!isOpen);
-                }
-            );
-        }
-
-        // Close panel.
-        const closeButton =
-            $("#close") ||
-            $("#closePanel") ||
-            shadow.querySelector(
-                '[data-action="close"]'
-            );
-
-        if (closeButton) {
-            closeButton.addEventListener(
-                "click",
-                () => setPanelOpen(false)
-            );
-        }
-
-        // Close panel with Escape.
-        shadow.addEventListener(
-            "keydown",
-            event => {
-                if (event.key === "Escape") {
-                    setPanelOpen(false);
-                }
-            }
-        );
-    }
-
-    // ==========================================
-    // INITIALIZE AUDITOR
-    // ==========================================
-
-    function initializeAuditor() {
-        // Ensure the root is attached to the document.
-        if (!root.isConnected) {
-            document.body.appendChild(root);
-        }
-
-        // Restore saved settings.
-        const proxyInput = $("#proxyUrl");
-
-        if (proxyInput) {
-            proxyInput.value =
-                storageGet(PROXY_KEY, "") ||
-                proxyInput.value ||
-                "";
-        }
-
-        // Load previous audit history.
-        loadHistory();
-
-        // Connect all buttons and controls.
-        bindEvents();
-
-        // Set initial interface state.
-        setBusy(false);
-
-        setProgress(
-            0,
-            1,
-            "Ready"
-        );
-
-        setStatus(
-            "Ready to scan.",
-            "info"
-        );
-
-        // Show the overview.
-        renderResults("overview");
-
-        console.log(
-            "Neon Website Auditor V4 initialized successfully."
-        );
-    }
-
-    // ==========================================
-    // RUN INITIALIZATION
-    // ==========================================
-
-    initializeAuditor();
-
-}
-
-// Start the auditor only when the page DOM is ready.
-if (document.readyState === "loading") {
-    document.addEventListener(
-        "DOMContentLoaded",
-        initAuditor,
-        { once: true }
-    );
-} else {
-    initAuditor();
-}
-
+    setConnectionStatus(true, `Worker reachable · HTTP ${result.status}`);
+    toast(`Worker test completed. Target returned HTTP ${result.status}.`);
+  }
+
+  function bindEvents() {
+    document.querySelectorAll(".nav button").forEach(button => button.addEventListener("click", () => navigate(button.dataset.view)));
+    $("saveSettingsBtn").addEventListener("click", saveSettings);
+    $("loadSitemapBtn").addEventListener("click", async () => {
+      try { saveSettingsQuiet(); const count = await loadSitemapFromUrl(); toast(`Loaded ${count} sitemap URLs.`); navigate("sitemap"); }
+      catch (error) { showProgress(false); toast(error.message, 6000); }
+    });
+    $("reloadSitemapBtn").addEventListener("click", async () => {
+      try { const count = await loadSitemapFromUrl(); toast(`Loaded ${count} sitemap URLs.`); }
+      catch (error) { showProgress(false); toast(error.message, 6000); }
+    });
+    $("scanSiteBtn").addEventListener("click", async () => {
+      try { saveSettingsQuiet(); if (!state.sitemapEntries.length) await loadSitemapFromUrl(); navigate("audit"); await runAudit(); }
+      catch (error) { showProgress(false); toast(error.message, 6500); }
+    });
+    $("quickScanBtn").addEventListener("click", async () => {
+      try { saveSettingsQuiet(); if (!state.sitemapEntries.length) await loadSitemapFromUrl(); navigate("audit"); await runAudit(); }
+      catch (error) { showProgress(false); toast(error.message, 6500); }
+    });
+    $("rerunAuditBtn").addEventListener("click", async () => {
+      try { navigate("audit"); await runAudit(); }
+      catch (error) { showProgress(false); toast(error.message, 6500); }
+    });
+    $("testWorkerBtn").addEventListener("click", async () => {
+      try { await testWorker(); }
+      catch (error) { toast(error.message, 6500); }
+    });
+    $("importPastedXmlBtn").addEventListener("click", async () => {
+      try { const xml = $("pastedXml").value.trim(); if (!xml) throw new Error("Paste the XML content first."); await importXmlText(xml, "Pasted XML"); navigate("sitemap"); }
+      catch (error) { toast(error.message, 6500); }
+    });
+    $("uploadXmlBtn").addEventListener("click", () => $("xmlFileInput").click());
+    $("xmlFileInput").addEventListener("change", async event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try { const xml = await file.text(); await importXmlText(xml, file.name); navigate("sitemap"); }
+      catch (error) { toast(error.message, 6500); }
+      finally { event.target.value = ""; }
+    });
+    $("sitemapSearch").addEventListener("input", renderSitemap);
+    $("auditSearch").addEventListener("input", renderAudit);
+    $("auditFilter").addEventListener("change", renderAudit);
+    $("previewCleanupBtn").addEventListener("click", () => {
+      try { previewCleanup(); }
+      catch (error) { toast(error.message, 6500); }
+    });
+    const downloadCleaned = () => {
+      if (!state.cleanedXml) return;
+      downloadBlob(state.cleanedXml, "sitemap-cleaned.xml", "application/xml;charset=utf-8");
+      addActivity("Cleaned sitemap downloaded", `${state.cleanupMatches.length} URL(s) removed from export`);
+    };
+    $("downloadCleanedBtn").addEventListener("click", downloadCleaned);
+    $("downloadCleanedXmlBtn").addEventListener("click", downloadCleaned);
+    $("copyCleanedXmlBtn").addEventListener("click", async () => {
+      if (!state.cleanedXml) return;
+      try { await navigator.clipboard.writeText(state.cleanedXml); toast("Cleaned XML copied to clipboard."); }
+      catch { $("cleanedXmlPreview").select(); document.execCommand("copy"); toast("Cleaned XML copied."); }
+    });
+    $("exportSitemapCsvBtn").addEventListener("click", () => { try { exportSitemapCsv(); } catch (e) { toast(e.message); } });
+    $("exportAuditBtn").addEventListener("click", () => { try { exportAuditCsv(); } catch (e) { toast(e.message); } });
+    $("exportCleanupCsvBtn").addEventListener("click", () => { try { exportCleanupCsv(); } catch (e) { toast(e.message); } });
+    $("analyzeFindBtn").addEventListener("click", () => { try { analyzeFindReplace(); } catch (e) { toast(e.message); } });
+    $("analyzeKeywordBtn").addEventListener("click", () => { try { analyzeKeyword(); } catch (e) { toast(e.message); } });
+    $("clearHistoryBtn").addEventListener("click", () => {
+      if (!confirm("Clear saved scan history from this browser?")) return;
+      state.history = []; saveHistoryOnly(); renderHistory(); toast("Scan history cleared.");
+    });
+    ["workerUrl","siteUrl","sitemapUrl","cleanupTargetHost"].forEach(id => $(id).addEventListener("change", () => {
+      $("sidebarProxyStatus").textContent = $("workerUrl").value.trim() ? "Worker URL configured · settings unsaved" : "Worker URL not set";
+    }));
+  }
+
+  function saveSettingsQuiet() {
+    const payload = {
+      workerUrl: $("workerUrl").value.trim(),
+      siteUrl: $("siteUrl").value.trim(),
+      sitemapUrl: $("sitemapUrl").value.trim(),
+      cleanupTargetHost: $("cleanupTargetHost").value.trim(),
+      history: state.history.slice(0, 20)
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    $("sidebarProxyStatus").textContent = payload.workerUrl ? "Worker URL saved" : "Worker URL not set";
+  }
+
+  function init() {
+    loadSettings();
+    bindEvents();
+    renderDashboard();
+    renderActivity();
+    renderSitemap();
+    renderAudit();
+    setConnectionStatus(false, "Worker not tested");
+  }
+
+  init();
 })();
-
-    </script>
-  </head>
-  <body>
-    <p>Hello</p>
-  </body>
+</script>
+</body>
 </html>
