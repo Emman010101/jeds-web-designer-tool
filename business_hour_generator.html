@@ -15,21 +15,22 @@ body {
     margin: 0;
     padding: 25px;
     font-family: Arial, sans-serif;
-    background: #f4f6f8;
-    color: #263238;
+    background: #111827;
+    color: #e5e7eb;
 }
 
 .container {
-    max-width: 850px;
+    max-width: 950px;
     margin: auto;
 }
 
 h2 {
     margin: 0 0 8px;
+    color: #f9fafb;
 }
 
 .description {
-    color: #64748b;
+    color: #9ca3af;
     margin-bottom: 22px;
     line-height: 1.5;
 }
@@ -56,9 +57,16 @@ h2 {
     flex: 1;
     min-width: 0;
     padding: 12px;
-    border: 1px solid #cbd5e1;
+    background: #1f2937;
+    border: 1px solid #374151;
     border-radius: 6px;
+    color: #f9fafb;
     font-size: 14px;
+    outline: none;
+}
+
+.location input:focus {
+    border-color: #3b82f6;
 }
 
 button {
@@ -67,16 +75,21 @@ button {
     border-radius: 6px;
     cursor: pointer;
     font-weight: 600;
+    transition: .2s;
+}
+
+button:hover {
+    filter: brightness(1.15);
 }
 
 .remove {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: #451f27;
+    color: #fca5a5;
 }
 
 .add {
-    background: #e2e8f0;
-    color: #334155;
+    background: #263548;
+    color: #bfdbfe;
 }
 
 .generate, .copy {
@@ -92,9 +105,9 @@ button {
 }
 
 .output-container {
-    background: white;
-    border: 1px solid #dce3e8;
-    border-radius: 8px;
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 9px;
     padding: 18px;
     margin-top: 25px;
 }
@@ -104,27 +117,105 @@ button {
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
 }
 
 .output-header h3 {
     margin: 0;
+    color: #f9fafb;
 }
 
-textarea {
-    width: 100%;
-    min-height: 350px;
-    resize: vertical;
-    padding: 14px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
+.output-hint {
+    color: #9ca3af;
+    font-size: 12px;
+    margin-bottom: 15px;
+}
+
+.tag-section {
+    margin-bottom: 22px;
+}
+
+.tag-location {
+    font-size: 14px;
+    font-weight: bold;
+    color: #93c5fd;
+    margin-bottom: 12px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid #374151;
+}
+
+.tag-day {
+    margin-bottom: 13px;
+}
+
+.day-name {
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+}
+
+.tag-pair {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.tag {
+    display: inline-block;
+    background: #111827;
+    border: 1px solid #374151;
+    color: #a7f3d0;
+    border-radius: 5px;
+    padding: 9px 11px;
     font-family: Consolas, monospace;
-    font-size: 13px;
-    line-height: 1.6;
-    background: #f8fafc;
+    font-size: 12px;
+    cursor: pointer;
+    word-break: break-all;
+    transition: .2s;
 }
 
-@media(max-width: 500px) {
+.tag:hover {
+    background: #263548;
+    border-color: #3b82f6;
+    color: #bfdbfe;
+}
+
+.tag.copied {
+    background: #064e3b;
+    border-color: #10b981;
+    color: #6ee7b7;
+}
+
+.toast {
+    position: fixed;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #065f46;
+    color: #d1fae5;
+    padding: 12px 20px;
+    border-radius: 7px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: .25s;
+    z-index: 9999;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.empty {
+    color: #9ca3af;
+    padding: 20px 0;
+    text-align: center;
+}
+
+@media(max-width: 600px) {
     body {
         padding: 14px;
     }
@@ -132,6 +223,14 @@ textarea {
     .output-header {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .tag-pair {
+        flex-direction: column;
+    }
+
+    .tag {
+        width: 100%;
     }
 }
 </style>
@@ -142,9 +241,10 @@ textarea {
 <div class="container">
 
     <h2>Business Hours Tag Generator</h2>
+
     <p class="description">
-        Add your website locations in order. Tags will automatically
-        use the correct location index.
+        Add your website locations in order. Click any generated tag to
+        automatically copy it to your clipboard.
     </p>
 
     <div class="location-list" id="locationList"></div>
@@ -158,15 +258,22 @@ textarea {
 
         <div class="output-header">
             <h3>Generated Tags</h3>
-            <button class="copy" onclick="copyTags()">Copy All</button>
+            <button class="copy" onclick="copyAll()">Copy All Tags</button>
         </div>
 
-        <textarea id="output" readonly
-            placeholder="Generated tags will appear here..."></textarea>
+        <div class="output-hint">
+            <span>Click an individual tag to copy it.</span>
+        </div>
+
+        <div id="generatedTags">
+            <div class="empty">No tags generated yet.</div>
+        </div>
 
     </div>
 
 </div>
+
+<div class="toast" id="toast">Tag copied!</div>
 
 <script>
 
@@ -195,6 +302,8 @@ function addLocation(name = "") {
     input.placeholder = "Enter location name";
     input.value = name;
 
+    input.addEventListener("input", generateTags);
+
     const remove = document.createElement("button");
     remove.className = "remove";
     remove.textContent = "Remove";
@@ -202,6 +311,7 @@ function addLocation(name = "") {
     remove.onclick = () => {
         location.remove();
         updateNumbers();
+        generateTags();
     };
 
     location.append(number, input, remove);
@@ -222,8 +332,14 @@ function updateNumbers() {
 function generateTags() {
 
     const locations = document.querySelectorAll(".location");
+    const container = document.getElementById("generatedTags");
 
-    let tags = [];
+    container.innerHTML = "";
+
+    if (!locations.length) {
+        container.innerHTML = '<div class="empty">Add a location to generate tags.</div>';
+        return;
+    }
 
     locations.forEach((location, locationIndex) => {
 
@@ -233,53 +349,127 @@ function generateTags() {
 
         const index = locationIndex + 1;
 
-        tags.push("========================================");
-        tags.push(`${locationName} - Location ${index}`);
-        tags.push("========================================");
-        tags.push("");
+        const section = document.createElement("div");
+        section.className = "tag-section";
+
+        const heading = document.createElement("div");
+        heading.className = "tag-location";
+        heading.textContent = `${locationName} — Location ${index}`;
+
+        section.appendChild(heading);
 
         days.forEach((day, dayIndex) => {
 
             const weekdayIndex = dayIndex + 1;
 
-            tags.push(`--- ${day} ---`);
+            const dayContainer = document.createElement("div");
+            dayContainer.className = "tag-day";
 
-            tags.push(
-                `{:HOURS.${index}.WEEKDAYS.${weekdayIndex}.SCHEDULE.1.TIME_OPEN:}`
-            );
+            const dayHeading = document.createElement("div");
+            dayHeading.className = "day-name";
+            dayHeading.textContent = day;
 
-            tags.push(
-                `{:HOURS.${index}.WEEKDAYS.${weekdayIndex}.SCHEDULE.1.TIME_CLOSE:}`
-            );
+            const pair = document.createElement("div");
+            pair.className = "tag-pair";
 
-            tags.push("");
+            const openTag =
+                `{:HOURS.${index}.WEEKDAYS.${weekdayIndex}.SCHEDULE.1.TIME_OPEN:}`;
+
+            const closeTag =
+                `{:HOURS.${index}.WEEKDAYS.${weekdayIndex}.SCHEDULE.1.TIME_CLOSE:}`;
+
+            [openTag, closeTag].forEach(tagText => {
+
+                const tag = document.createElement("span");
+                tag.className = "tag";
+                tag.textContent = tagText;
+                tag.title = "Click to copy";
+
+                tag.addEventListener("click", () => {
+                    copyText(tagText, tag);
+                });
+
+                pair.appendChild(tag);
+            });
+
+            dayContainer.append(dayHeading, pair);
+            section.appendChild(dayContainer);
+
+        });
+
+        container.appendChild(section);
+
+    });
+}
+
+async function copyText(text, element = null) {
+
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (error) {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+    }
+
+    if (element) {
+        element.classList.add("copied");
+        setTimeout(() => element.classList.remove("copied"), 900);
+    }
+
+    showToast("Tag copied to clipboard!");
+}
+
+async function copyAll() {
+
+    const tags = [];
+
+    document.querySelectorAll(".tag-section").forEach(section => {
+
+        tags.push(section.querySelector(".tag-location").textContent);
+        tags.push("");
+
+        section.querySelectorAll(".tag-day").forEach(day => {
+
+            const dayName = day.querySelector(".day-name").textContent;
+
+            tags.push("--- " + dayName + " ---");
+
+            day.querySelectorAll(".tag").forEach(tag => {
+                tags.push(tag.textContent);
+            });
+
+            tags.push("");Location 2
         });
 
         tags.push("");
     });
 
-    document.getElementById("output").value = tags.join("\n");
+    if (!tags.length) return;
+
+    await copyText(tags.join("\n"));
 }
 
-async function copyTags() {
+function showToast(message) {
 
-    const output = document.getElementById("output");
+    const toast = document.getElementById("toast");
 
-    if (!output.value.trim()) {
-        generateTags();
-    }
+    toast.textContent = message;
+    toast.classList.add("show");
 
-    try {
-        await navigator.clipboard.writeText(output.value);
-        alert("All tags copied successfully!");
-    } catch (error) {
-        output.select();
-        document.execCommand("copy");
-        alert("All tags copied successfully!");
-    }
+    clearTimeout(window.toastTimer);
+
+    window.toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+    }, 1600);
 }
 
-// Default locations
+// Initial locations
 addLocation("Washburn");
 addLocation("Location 2");
 addLocation("Location 3");
