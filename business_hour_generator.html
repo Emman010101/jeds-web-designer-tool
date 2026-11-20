@@ -1,0 +1,486 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Hours Tag Generator</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 25px;
+        font-family: Arial, sans-serif;
+        background: #f4f6f8;
+        color: #263238;
+    }
+
+    .container {
+        max-width: 1100px;
+        margin: auto;
+    }
+
+    .header {
+        margin-bottom: 25px;
+    }
+
+    .header h2 {
+        margin: 0 0 8px;
+        font-size: 24px;
+    }
+
+    .header p {
+        margin: 0;
+        color: #64748b;
+        line-height: 1.5;
+    }
+
+    .location {
+        background: #fff;
+        border: 1px solid #dce3e8;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 18px;
+    }
+
+    .location-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .location-header h3 {
+        margin: 0;
+        font-size: 17px;
+    }
+
+    input, select {
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 14px;
+        width: 100%;
+        background: #fff;
+    }
+
+    .location-name {
+        margin-bottom: 18px;
+    }
+
+    .day {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        gap: 15px;
+        padding: 13px 0;
+        border-top: 1px solid #edf0f2;
+        align-items: start;
+    }
+
+    .day-name {
+        font-weight: 600;
+        padding-top: 10px;
+    }
+
+    .schedule-list {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+    }
+
+    .schedule {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+    }
+
+    .schedule input {
+        min-width: 0;
+    }
+
+    button {
+        border: 0;
+        border-radius: 6px;
+        padding: 10px 14px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    button:hover {
+        opacity: .85;
+    }
+
+    .primary {
+        background: #2563eb;
+        color: #fff;
+    }
+
+    .secondary {
+        background: #e8eef5;
+        color: #334155;
+    }
+
+    .danger {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .add-schedule {
+        align-self: flex-start;
+        margin-top: 3px;
+    }
+
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 20px 0;
+    }
+
+    .output {
+        background: #fff;
+        border: 1px solid #dce3e8;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 25px;
+    }
+
+    .output-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .output-header h3 {
+        margin: 0;
+    }
+
+    .output textarea {
+        width: 100%;
+        min-height: 350px;
+        resize: vertical;
+        font-family: Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.7;
+        padding: 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #f8fafc;
+    }
+
+    .empty {
+        color: #64748b;
+        text-align: center;
+        padding: 30px;
+    }
+
+    @media(max-width: 650px) {
+        body {
+            padding: 12px;
+        }
+
+        .day {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .schedule {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .schedule button {
+            grid-column: span 2;
+        }
+
+        .location-header {
+            align-items: flex-start;
+        }
+
+        .output-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <h2>Business Hours Tag Generator</h2>
+        <p>Generate dynamic business hours tags for multiple website locations.</p>
+    </div>
+
+    <div id="locations"></div>
+
+    <div class="actions">
+        <button class="primary" onclick="addLocation()">
+            + Add Location
+        </button>
+
+        <button class="secondary" onclick="generateTags()">
+            Generate Tags
+        </button>
+    </div>
+
+    <div class="output">
+        <div class="output-header">
+            <h3>Generated Tags</h3>
+            <button class="primary" onclick="copyAll()">Copy All Tags</button>
+        </div>
+
+        <textarea id="output" readonly
+            placeholder="Your generated tags will appear here..."></textarea>
+    </div>
+
+</div>
+
+<script>
+
+const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+];
+
+let locationCount = 0;
+
+function addLocation(name = "") {
+
+    locationCount++;
+
+    const locationIndex = locationCount;
+
+    const location = document.createElement("div");
+
+    location.className = "location";
+
+    location.dataset.index = locationIndex;
+
+    location.innerHTML = `
+        <div class="location-header">
+            <h3>Location ${locationIndex}</h3>
+            <button class="danger" onclick="removeLocation(this)">
+                Remove
+            </button>
+        </div>
+
+        <input
+            class="location-name"
+            type="text"
+            placeholder="Enter location name (e.g. Washburn)"
+            value="${escapeHTML(name)}"
+        >
+
+        <div class="days-container">
+            ${days.map((day, index) => `
+                <div class="day" data-day="${index + 1}">
+
+                    <div class="day-name">${day}</div>
+
+                    <div class="schedule-list">
+
+                        <div class="schedule">
+                            <input type="text"
+                                class="time-open"
+                                placeholder="Opening time">
+
+                            <input type="text"
+                                class="time-close"
+                                placeholder="Closing time">
+
+                            <button class="danger"
+                                onclick="removeSchedule(this)">
+                                Remove
+                            </button>
+                        </div>
+
+                        <button class="secondary add-schedule"
+                            onclick="addSchedule(this)">
+                            + Add Split Hours
+                        </button>
+
+                    </div>
+                </div>
+            `).join("")}
+        </div>
+    `;
+
+    document.getElementById("locations").appendChild(location);
+
+    return location;
+}
+
+function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
+function addSchedule(button) {
+
+    const list = button.parentElement;
+
+    const schedule = document.createElement("div");
+
+    schedule.className = "schedule";
+
+    schedule.innerHTML = `
+        <input type="text"
+            class="time-open"
+            placeholder="Opening time">
+
+        <input type="text"
+            class="time-close"
+            placeholder="Closing time">
+
+        <button class="danger"
+            onclick="removeSchedule(this)">
+            Remove
+        </button>
+    `;
+
+    list.insertBefore(schedule, button);
+}
+
+function removeSchedule(button) {
+
+    const schedule = button.closest(".schedule");
+
+    const list = schedule.parentElement;
+
+    // Keep at least one schedule row per day.
+    if (list.querySelectorAll(".schedule").length <= 1) {
+        schedule.querySelector(".time-open").value = "";
+        schedule.querySelector(".time-close").value = "";
+        return;
+    }
+
+    schedule.remove();
+}
+
+function removeLocation(button) {
+
+    button.closest(".location").remove();
+
+    // Reindex remaining locations based on their current order.
+    reindexLocations();
+}
+
+function reindexLocations() {
+
+    document.querySelectorAll(".location").forEach((location, index) => {
+
+        location.dataset.index = index + 1;
+
+        location.querySelector(".location-header h3").textContent =
+            `Location ${index + 1}`;
+
+    });
+
+    locationCount = document.querySelectorAll(".location").length;
+}
+
+function generateTags() {
+
+    const locations = document.querySelectorAll(".location");
+
+    let output = [];
+
+    locations.forEach((location, locationPosition) => {
+
+        const locationIndex = locationPosition + 1;
+
+        const locationName =
+            location.querySelector(".location-name").value.trim()
+            || `Location ${locationIndex}`;
+
+        output.push(`========================================`);
+        output.push(`${locationName} (Location ${locationIndex})`);
+        output.push(`========================================`);
+        output.push("");
+
+        location.querySelectorAll(".day").forEach(day => {
+
+            const dayIndex = day.dataset.day;
+
+            output.push(`--- ${days[dayIndex - 1]} ---`);
+
+            const schedules = day.querySelectorAll(".schedule");
+
+            schedules.forEach((schedule, schedulePosition) => {
+
+                const scheduleIndex = schedulePosition + 1;
+
+                const open = schedule.querySelector(".time-open").value.trim();
+                const close = schedule.querySelector(".time-close").value.trim();
+
+                if (!open && !close) return;
+
+                output.push(
+                    `Open: {:HOURS.${locationIndex}.WEEKDAYS.${dayIndex}.SCHEDULE.${scheduleIndex}.TIME_OPEN:}`
+                );
+
+                output.push(
+                    `Close: {:HOURS.${locationIndex}.WEEKDAYS.${dayIndex}.SCHEDULE.${scheduleIndex}.TIME_CLOSE:}`
+                );
+
+                output.push("");
+
+            });
+
+        });
+
+        output.push("");
+    });
+
+    document.getElementById("output").value = output.join("\n");
+
+}
+
+function copyAll() {
+
+    const output = document.getElementById("output");
+
+    if (!output.value.trim()) {
+        generateTags();
+    }
+
+    output.select();
+
+    navigator.clipboard.writeText(output.value)
+        .then(() => alert("All generated tags copied!"))
+        .catch(() => {
+            document.execCommand("copy");
+            alert("Tags copied!");
+        });
+
+}
+
+// Initial locations
+addLocation("Washburn");
+addLocation("Location 2");
+addLocation("Location 3");
+
+</script>
+
+</body>
+</html>
