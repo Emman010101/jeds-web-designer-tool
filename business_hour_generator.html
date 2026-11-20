@@ -7,208 +7,133 @@
 <title>Business Hours Tag Generator</title>
 
 <style>
-    * {
-        box-sizing: border-box;
-    }
+* {
+    box-sizing: border-box;
+}
 
+body {
+    margin: 0;
+    padding: 25px;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    color: #263238;
+}
+
+.container {
+    max-width: 850px;
+    margin: auto;
+}
+
+h2 {
+    margin: 0 0 8px;
+}
+
+.description {
+    color: #64748b;
+    margin-bottom: 22px;
+    line-height: 1.5;
+}
+
+.location-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.location {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.location-number {
+    min-width: 30px;
+    font-weight: bold;
+    color: #64748b;
+}
+
+.location input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+button {
+    padding: 11px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.remove {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.add {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.generate, .copy {
+    background: #2563eb;
+    color: white;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.output-container {
+    background: white;
+    border: 1px solid #dce3e8;
+    border-radius: 8px;
+    padding: 18px;
+    margin-top: 25px;
+}
+
+.output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.output-header h3 {
+    margin: 0;
+}
+
+textarea {
+    width: 100%;
+    min-height: 350px;
+    resize: vertical;
+    padding: 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    background: #f8fafc;
+}
+
+@media(max-width: 500px) {
     body {
-        margin: 0;
-        padding: 25px;
-        font-family: Arial, sans-serif;
-        background: #f4f6f8;
-        color: #263238;
-    }
-
-    .container {
-        max-width: 1100px;
-        margin: auto;
-    }
-
-    .header {
-        margin-bottom: 25px;
-    }
-
-    .header h2 {
-        margin: 0 0 8px;
-        font-size: 24px;
-    }
-
-    .header p {
-        margin: 0;
-        color: #64748b;
-        line-height: 1.5;
-    }
-
-    .location {
-        background: #fff;
-        border: 1px solid #dce3e8;
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 18px;
-    }
-
-    .location-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 15px;
-    }
-
-    .location-header h3 {
-        margin: 0;
-        font-size: 17px;
-    }
-
-    input, select {
-        padding: 10px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        font-size: 14px;
-        width: 100%;
-        background: #fff;
-    }
-
-    .location-name {
-        margin-bottom: 18px;
-    }
-
-    .day {
-        display: grid;
-        grid-template-columns: 110px 1fr;
-        gap: 15px;
-        padding: 13px 0;
-        border-top: 1px solid #edf0f2;
-        align-items: start;
-    }
-
-    .day-name {
-        font-weight: 600;
-        padding-top: 10px;
-    }
-
-    .schedule-list {
-        display: flex;
-        flex-direction: column;
-        gap: 9px;
-    }
-
-    .schedule {
-        display: grid;
-        grid-template-columns: 1fr 1fr auto;
-        gap: 8px;
-    }
-
-    .schedule input {
-        min-width: 0;
-    }
-
-    button {
-        border: 0;
-        border-radius: 6px;
-        padding: 10px 14px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 13px;
-    }
-
-    button:hover {
-        opacity: .85;
-    }
-
-    .primary {
-        background: #2563eb;
-        color: #fff;
-    }
-
-    .secondary {
-        background: #e8eef5;
-        color: #334155;
-    }
-
-    .danger {
-        background: #fee2e2;
-        color: #b91c1c;
-    }
-
-    .add-schedule {
-        align-self: flex-start;
-        margin-top: 3px;
-    }
-
-    .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin: 20px 0;
-    }
-
-    .output {
-        background: #fff;
-        border: 1px solid #dce3e8;
-        border-radius: 10px;
-        padding: 20px;
-        margin-top: 25px;
+        padding: 14px;
     }
 
     .output-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 15px;
+        align-items: flex-start;
+        flex-direction: column;
     }
-
-    .output-header h3 {
-        margin: 0;
-    }
-
-    .output textarea {
-        width: 100%;
-        min-height: 350px;
-        resize: vertical;
-        font-family: Consolas, monospace;
-        font-size: 13px;
-        line-height: 1.7;
-        padding: 14px;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        background: #f8fafc;
-    }
-
-    .empty {
-        color: #64748b;
-        text-align: center;
-        padding: 30px;
-    }
-
-    @media(max-width: 650px) {
-        body {
-            padding: 12px;
-        }
-
-        .day {
-            grid-template-columns: 1fr;
-            gap: 8px;
-        }
-
-        .schedule {
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .schedule button {
-            grid-column: span 2;
-        }
-
-        .location-header {
-            align-items: flex-start;
-        }
-
-        .output-header {
-            align-items: flex-start;
-            flex-direction: column;
-        }
-    }
+}
 </style>
 </head>
 
@@ -216,31 +141,29 @@
 
 <div class="container">
 
-    <div class="header">
-        <h2>Business Hours Tag Generator</h2>
-        <p>Generate dynamic business hours tags for multiple website locations.</p>
-    </div>
+    <h2>Business Hours Tag Generator</h2>
+    <p class="description">
+        Add your website locations in order. Tags will automatically
+        use the correct location index.
+    </p>
 
-    <div id="locations"></div>
+    <div class="location-list" id="locationList"></div>
 
     <div class="actions">
-        <button class="primary" onclick="addLocation()">
-            + Add Location
-        </button>
-
-        <button class="secondary" onclick="generateTags()">
-            Generate Tags
-        </button>
+        <button class="add" onclick="addLocation()">+ Add Location</button>
+        <button class="generate" onclick="generateTags()">Generate Tags</button>
     </div>
 
-    <div class="output">
+    <div class="output-container">
+
         <div class="output-header">
             <h3>Generated Tags</h3>
-            <button class="primary" onclick="copyAll()">Copy All Tags</button>
+            <button class="copy" onclick="copyTags()">Copy All</button>
         </div>
 
         <textarea id="output" readonly
-            placeholder="Your generated tags will appear here..."></textarea>
+            placeholder="Generated tags will appear here..."></textarea>
+
     </div>
 
 </div>
@@ -257,206 +180,88 @@ const days = [
     "Sunday"
 ];
 
-let locationCount = 0;
+const locationList = document.getElementById("locationList");
 
 function addLocation(name = "") {
 
-    locationCount++;
-
-    const locationIndex = locationCount;
-
     const location = document.createElement("div");
-
     location.className = "location";
 
-    location.dataset.index = locationIndex;
+    const number = document.createElement("span");
+    number.className = "location-number";
 
-    location.innerHTML = `
-        <div class="location-header">
-            <h3>Location ${locationIndex}</h3>
-            <button class="danger" onclick="removeLocation(this)">
-                Remove
-            </button>
-        </div>
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Enter location name";
+    input.value = name;
 
-        <input
-            class="location-name"
-            type="text"
-            placeholder="Enter location name (e.g. Washburn)"
-            value="${escapeHTML(name)}"
-        >
+    const remove = document.createElement("button");
+    remove.className = "remove";
+    remove.textContent = "Remove";
 
-        <div class="days-container">
-            ${days.map((day, index) => `
-                <div class="day" data-day="${index + 1}">
+    remove.onclick = () => {
+        location.remove();
+        updateNumbers();
+    };
 
-                    <div class="day-name">${day}</div>
+    location.append(number, input, remove);
 
-                    <div class="schedule-list">
+    locationList.appendChild(location);
 
-                        <div class="schedule">
-                            <input type="text"
-                                class="time-open"
-                                placeholder="Opening time">
-
-                            <input type="text"
-                                class="time-close"
-                                placeholder="Closing time">
-
-                            <button class="danger"
-                                onclick="removeSchedule(this)">
-                                Remove
-                            </button>
-                        </div>
-
-                        <button class="secondary add-schedule"
-                            onclick="addSchedule(this)">
-                            + Add Split Hours
-                        </button>
-
-                    </div>
-                </div>
-            `).join("")}
-        </div>
-    `;
-
-    document.getElementById("locations").appendChild(location);
-
-    return location;
+    updateNumbers();
 }
 
-function escapeHTML(value) {
-    return String(value).replace(/[&<>"']/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    })[char]);
-}
-
-function addSchedule(button) {
-
-    const list = button.parentElement;
-
-    const schedule = document.createElement("div");
-
-    schedule.className = "schedule";
-
-    schedule.innerHTML = `
-        <input type="text"
-            class="time-open"
-            placeholder="Opening time">
-
-        <input type="text"
-            class="time-close"
-            placeholder="Closing time">
-
-        <button class="danger"
-            onclick="removeSchedule(this)">
-            Remove
-        </button>
-    `;
-
-    list.insertBefore(schedule, button);
-}
-
-function removeSchedule(button) {
-
-    const schedule = button.closest(".schedule");
-
-    const list = schedule.parentElement;
-
-    // Keep at least one schedule row per day.
-    if (list.querySelectorAll(".schedule").length <= 1) {
-        schedule.querySelector(".time-open").value = "";
-        schedule.querySelector(".time-close").value = "";
-        return;
-    }
-
-    schedule.remove();
-}
-
-function removeLocation(button) {
-
-    button.closest(".location").remove();
-
-    // Reindex remaining locations based on their current order.
-    reindexLocations();
-}
-
-function reindexLocations() {
+function updateNumbers() {
 
     document.querySelectorAll(".location").forEach((location, index) => {
-
-        location.dataset.index = index + 1;
-
-        location.querySelector(".location-header h3").textContent =
-            `Location ${index + 1}`;
-
+        location.querySelector(".location-number").textContent =
+            (index + 1) + ".";
     });
-
-    locationCount = document.querySelectorAll(".location").length;
 }
 
 function generateTags() {
 
     const locations = document.querySelectorAll(".location");
 
-    let output = [];
+    let tags = [];
 
-    locations.forEach((location, locationPosition) => {
-
-        const locationIndex = locationPosition + 1;
+    locations.forEach((location, locationIndex) => {
 
         const locationName =
-            location.querySelector(".location-name").value.trim()
-            || `Location ${locationIndex}`;
+            location.querySelector("input").value.trim()
+            || `Location ${locationIndex + 1}`;
 
-        output.push(`========================================`);
-        output.push(`${locationName} (Location ${locationIndex})`);
-        output.push(`========================================`);
-        output.push("");
+        const index = locationIndex + 1;
 
-        location.querySelectorAll(".day").forEach(day => {
+        tags.push("========================================");
+        tags.push(`${locationName} - Location ${index}`);
+        tags.push("========================================");
+        tags.push("");
 
-            const dayIndex = day.dataset.day;
+        days.forEach((day, dayIndex) => {
 
-            output.push(`--- ${days[dayIndex - 1]} ---`);
+            const weekdayIndex = dayIndex + 1;
 
-            const schedules = day.querySelectorAll(".schedule");
+            tags.push(`--- ${day} ---`);
 
-            schedules.forEach((schedule, schedulePosition) => {
+            tags.push(
+                `{:HOURS.${index}.WEEKDAYS.${weekdayIndex}.SCHEDULE.1.TIME_OPEN:}`
+            );
 
-                const scheduleIndex = schedulePosition + 1;
+            tags.push(
+                `{:HOURS.${index}.WEEKDAYS.${weekdayIndex}.SCHEDULE.1.TIME_CLOSE:}`
+            );
 
-                const open = schedule.querySelector(".time-open").value.trim();
-                const close = schedule.querySelector(".time-close").value.trim();
-
-                if (!open && !close) return;
-
-                output.push(
-                    `Open: {:HOURS.${locationIndex}.WEEKDAYS.${dayIndex}.SCHEDULE.${scheduleIndex}.TIME_OPEN:}`
-                );
-
-                output.push(
-                    `Close: {:HOURS.${locationIndex}.WEEKDAYS.${dayIndex}.SCHEDULE.${scheduleIndex}.TIME_CLOSE:}`
-                );
-
-                output.push("");
-
-            });
-
+            tags.push("");
         });
 
-        output.push("");
+        tags.push("");
     });
 
-    document.getElementById("output").value = output.join("\n");
-
+    document.getElementById("output").value = tags.join("\n");
 }
 
-function copyAll() {
+async function copyTags() {
 
     const output = document.getElementById("output");
 
@@ -464,21 +269,22 @@ function copyAll() {
         generateTags();
     }
 
-    output.select();
-
-    navigator.clipboard.writeText(output.value)
-        .then(() => alert("All generated tags copied!"))
-        .catch(() => {
-            document.execCommand("copy");
-            alert("Tags copied!");
-        });
-
+    try {
+        await navigator.clipboard.writeText(output.value);
+        alert("All tags copied successfully!");
+    } catch (error) {
+        output.select();
+        document.execCommand("copy");
+        alert("All tags copied successfully!");
+    }
 }
 
-// Initial locations
+// Default locations
 addLocation("Washburn");
 addLocation("Location 2");
 addLocation("Location 3");
+
+generateTags();
 
 </script>
 
